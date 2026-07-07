@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-07T00:00:00.000Z",
+  "note": "Curated, human-owned provider registry. Every entry here uses an official, documented API with the user's OWN key, within that service's Terms of Service. The `discover_providers` tool may APPEND suggestions to discovery-suggestions.json for review, but nothing is added here or enabled automatically — promotion is an explicit human action. Entries are tried for generation in array order (top first).",
+  "providers": [
+    {
+      "slug": "pexels",
+      "name": "Pexels",
+      "category": "stock",
+      "description": "Free stock video and photos via the official Pexels API.",
+      "docsUrl": "https://www.pexels.com/api/",
+      "authEnv": ["PEXELS_API_KEY"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "pixabay",
+      "name": "Pixabay",
+      "category": "stock",
+      "description": "Free stock video and images via the official Pixabay API.",
+      "docsUrl": "https://pixabay.com/api/docs/",
+      "authEnv": ["PIXABAY_API_KEY"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "unsplash",
+      "name": "Unsplash",
+      "category": "stock",
+      "description": "Free high-resolution stills via the official Unsplash API (attribution required).",
+      "docsUrl": "https://unsplash.com/developers",
+      "authEnv": ["UNSPLASH_ACCESS_KEY"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "replicate",
+      "name": "Replicate",
+      "category": "generative-video",
+      "description": "Run open text-to-video models via the official Replicate API. Set REPLICATE_VIDEO_MODEL to a model id, e.g. 'owner/model'.",
+      "docsUrl": "https://replicate.com/docs",
+      "authEnv": ["REPLICATE_API_TOKEN", "REPLICATE_VIDEO_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "fal",
+      "name": "fal.ai",
+      "category": "generative-video",
+      "description": "Run hosted text-to-video models via the official fal.ai queue API. Set FAL_VIDEO_MODEL, e.g. 'fal-ai/ltx-video'.",
+      "docsUrl": "https://fal.ai/docs",
+      "authEnv": ["FAL_API_KEY", "FAL_VIDEO_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "huggingface",
+      "name": "Hugging Face Inference",
+      "category": "generative-video",
+      "description": "Run text-to-video models via the official Hugging Face Inference API. Set HF_VIDEO_MODEL to a model id.",
+      "docsUrl": "https://huggingface.co/docs/api-inference",
+      "authEnv": ["HUGGINGFACE_API_TOKEN", "HF_VIDEO_MODEL"],
+      "implemented": true,
+      "enabled": true
+    }
+  ]
+}
