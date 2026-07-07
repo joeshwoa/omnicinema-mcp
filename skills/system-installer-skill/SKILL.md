@@ -1,11 +1,11 @@
 ---
 name: system-installer-skill
-description: Detect the host OS and install the local multimedia dependencies (Remotion packages, ffmpeg, Blender) that autonomous-cinema-mcp needs. Always asks for explicit permission before running any install command, and points caches at the external volume. Use when setting up the pipeline on a new machine or when a render fails because Remotion/ffmpeg/Blender is missing.
+description: Detect the host OS and install the local multimedia dependencies (Remotion packages, ffmpeg, Blender) that omnicinema-mcp needs. Always asks for explicit permission before running any install command, and points caches at the external volume. Use when setting up the pipeline on a new machine or when a render fails because Remotion/ffmpeg/Blender is missing.
 ---
 
 # System Installer Skill
 
-Sets up the local environment for `autonomous-cinema-mcp`. This skill is the
+Sets up the local environment for `omnicinema-mcp`. This skill is the
 human-facing counterpart to the server's `install_dependencies` tool.
 
 ## Behavior

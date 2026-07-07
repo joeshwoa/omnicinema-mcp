@@ -5,9 +5,9 @@
   "mcpServers": {
     "omnicinema": {
       "command": "node",
-      "args": ["/Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js"],
+      "args": ["/Volumes/PortableSSD/omnicinema-mcp/dist/index.js"],
       "env": {
-        "CINEMA_ROOT": "/Volumes/PortableSSD/autonomous-cinema-mcp",
+        "CINEMA_ROOT": "/Volumes/PortableSSD/omnicinema-mcp",
         "PEXELS_API_KEY": "",
         "PIXABAY_API_KEY": "",
         "UNSPLASH_ACCESS_KEY": "",

@@ -388,5 +388,5 @@ export async function startStdioServer(): Promise<void> {
   const server = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  log.info("autonomous-cinema-mcp server started on stdio.");
+  log.info("omnicinema-mcp server started on stdio.");
 }

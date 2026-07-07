@@ -8,8 +8,7 @@
     "node": ">=18.17"
   },
   "bin": {
-    "omnicinema-mcp": "dist/index.js",
-    "autonomous-cinema-mcp": "dist/index.js"
+    "omnicinema-mcp": "dist/index.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

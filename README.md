@@ -1,7 +1,7 @@
 # 🎬 omnicinema-mcp
 
 > A master **asset-creation engine** exposed as a local **Model Context Protocol (MCP)** server.
-> *(Package `omnicinema-mcp`. The project directory stays `autonomous-cinema-mcp` on the external drive.)*
+> *(Package and directory: `omnicinema-mcp`, on the external drive.)*
 
 One local server that plans, generates, and assembles production assets end-to-end:
 
@@ -31,12 +31,12 @@ If a service has no first-party API you can get a key for, it is **out of scope*
 - **Node.js ≥ 18.17** (developed on Node 26).
 - Optional, for video rendering: the Remotion toolchain (installed on demand) + **ffmpeg**.
 - Optional: **ffprobe** (part of ffmpeg) for measuring non-WAV audio durations.
-- An external volume if you want everything off your system drive (defaults to `/Volumes/PortableSSD/autonomous-cinema-mcp`).
+- An external volume if you want everything off your system drive (defaults to `/Volumes/PortableSSD/omnicinema-mcp`).
 
 ## Install
 
 ```bash
-cd /Volumes/PortableSSD/autonomous-cinema-mcp
+cd /Volumes/PortableSSD/omnicinema-mcp
 npm install          # core server (lightweight)
 npm run build        # compile to dist/
 npm run setup:render # optional: install the Remotion render toolchain
@@ -112,14 +112,14 @@ curl -s localhost:8787/assets/image -H "Authorization: Bearer $TOKEN" \
   "mcpServers": {
     "omnicinema": {
       "command": "node",
-      "args": ["/Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js"],
-      "env": { "CINEMA_ROOT": "/Volumes/PortableSSD/autonomous-cinema-mcp" }
+      "args": ["/Volumes/PortableSSD/omnicinema-mcp/dist/index.js"],
+      "env": { "CINEMA_ROOT": "/Volumes/PortableSSD/omnicinema-mcp" }
     }
   }
 }
 ```
 
-**Claude Code:** `claude mcp add omnicinema -- node /Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js`
+**Claude Code:** `claude mcp add omnicinema -- node /Volumes/PortableSSD/omnicinema-mcp/dist/index.js`
 
 ## Tools (15)
 

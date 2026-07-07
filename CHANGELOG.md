@@ -6,8 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.0] — 2026-07-07
 
-Expanded from a video pipeline (`autonomous-cinema-mcp`) into a master asset-creation
-engine (`omnicinema-mcp`). The video pipeline is retained and enhanced.
+Expanded the initial local video pipeline into a master asset-creation engine
+(`omnicinema-mcp`). The video pipeline is retained and enhanced.
 
 ### Added
 - **Multi-agent persona consultation** (`src/personas/`): Director of Photography,
@@ -34,8 +34,7 @@ engine (`omnicinema-mcp`). The video pipeline is retained and enhanced.
 - 5 new offline test suites (29 tests total).
 
 ### Changed
-- Package renamed to `omnicinema-mcp` (v0.2.0); the `autonomous-cinema-mcp` bin remains
-  as an alias. Storage directory unchanged.
+- Renamed the package, CLI bin, and project directory to `omnicinema-mcp` (v0.2.0).
 
 ## [0.1.0] — 2026-07-07
 

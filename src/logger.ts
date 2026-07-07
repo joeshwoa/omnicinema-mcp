@@ -12,7 +12,7 @@ const threshold = order[(process.env.CINEMA_LOG_LEVEL as Level) || "info"] ?? or
 function emit(level: Level, msg: string, extra?: unknown): void {
   if (order[level] < threshold) return;
   const ts = new Date().toISOString();
-  const prefix = `[${ts}] [${level.toUpperCase()}] [cinema-mcp]`;
+  const prefix = `[${ts}] [${level.toUpperCase()}] [omnicinema-mcp]`;
   if (extra !== undefined) {
     process.stderr.write(`${prefix} ${msg} ${safeJson(extra)}\n`);
   } else {

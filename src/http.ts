@@ -7,7 +7,7 @@ import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { log } from "./logger.js";
 
-export const USER_AGENT = "autonomous-cinema-mcp/0.1 (+https://github.com/)";
+export const USER_AGENT = "omnicinema-mcp/0.2 (+https://github.com/)";
 
 export async function getJson<T>(
   url: string,
