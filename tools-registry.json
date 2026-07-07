@@ -62,6 +62,66 @@
       "authEnv": ["HUGGINGFACE_API_TOKEN", "HF_VIDEO_MODEL"],
       "implemented": true,
       "enabled": true
+    },
+    {
+      "slug": "replicate-image",
+      "name": "Replicate (image)",
+      "category": "generative-image",
+      "description": "Text-to-image (FLUX/SDXL/etc) via Replicate. Set REPLICATE_IMAGE_MODEL.",
+      "docsUrl": "https://replicate.com/collections/text-to-image",
+      "authEnv": ["REPLICATE_API_TOKEN", "REPLICATE_IMAGE_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "huggingface-image",
+      "name": "Hugging Face (image)",
+      "category": "generative-image",
+      "description": "Text-to-image via HF Inference API. Set HF_IMAGE_MODEL.",
+      "docsUrl": "https://huggingface.co/models?pipeline_tag=text-to-image",
+      "authEnv": ["HUGGINGFACE_API_TOKEN", "HF_IMAGE_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "huggingface-tts",
+      "name": "Hugging Face (TTS)",
+      "category": "audio",
+      "description": "Text-to-speech (Kokoro/Bark/etc) via HF Inference API. Set HF_TTS_MODEL.",
+      "docsUrl": "https://huggingface.co/models?pipeline_tag=text-to-speech",
+      "authEnv": ["HUGGINGFACE_API_TOKEN", "HF_TTS_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "replicate-music",
+      "name": "Replicate (music)",
+      "category": "audio",
+      "description": "Text-to-music (MusicGen/AudioCraft) via Replicate. Set REPLICATE_MUSIC_MODEL.",
+      "docsUrl": "https://replicate.com/collections/ai-music-generation",
+      "authEnv": ["REPLICATE_API_TOKEN", "REPLICATE_MUSIC_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "huggingface-music",
+      "name": "Hugging Face (music)",
+      "category": "audio",
+      "description": "Text-to-music (MusicGen/AudioCraft) via HF Inference API. Set HF_MUSIC_MODEL.",
+      "docsUrl": "https://huggingface.co/models?pipeline_tag=text-to-audio",
+      "authEnv": ["HUGGINGFACE_API_TOKEN", "HF_MUSIC_MODEL"],
+      "implemented": true,
+      "enabled": true
+    },
+    {
+      "slug": "freesound",
+      "name": "Freesound",
+      "category": "audio",
+      "description": "Stock SFX / ambience via the official Freesound API (CC-licensed).",
+      "docsUrl": "https://freesound.org/docs/api/",
+      "authEnv": ["FREESOUND_API_KEY"],
+      "implemented": true,
+      "enabled": true
     }
   ]
 }

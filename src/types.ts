@@ -101,12 +101,27 @@ export interface TimelineItem {
   transitionInFrames: number;
 }
 
+export interface AudioTrack {
+  id: string;
+  /** Path relative to the project dir (Remotion staticFile). */
+  src: string;
+  role: "voiceover" | "soundtrack" | "sfx";
+  startFrame: number;
+  durationInFrames: number;
+  /** Precise source duration, carried through from the audio engine. */
+  durationMs: number;
+  /** Linear volume 0..1 (soundtracks are ducked under narration). */
+  volume: number;
+}
+
 export interface Timeline {
   fps: number;
   width: number;
   height: number;
   durationInFrames: number;
   items: TimelineItem[];
+  /** Optional audio tracks locked to the video by frame position. */
+  audioTracks?: AudioTrack[];
 }
 
 export type WorkflowMode = "fully_automated" | "interactive_montage";
@@ -127,6 +142,8 @@ export interface PipelineReport {
     total: number;
     bySource: Record<string, number>;
   };
+  /** Optional audio tracks attached to the timeline. */
+  audio?: { role: string; src: string; durationMs: number }[];
   warnings: string[];
   nextSteps: string[];
   paused: boolean;

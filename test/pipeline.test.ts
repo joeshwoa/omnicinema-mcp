@@ -146,3 +146,30 @@ test("interactive_montage mode pauses after acquisition and does not render", as
     "next steps should point to compile_montage",
   );
 });
+
+test("optional narration + soundtrack lock audio tracks to the timeline", async () => {
+  const report = await runCinemaPipeline({
+    prompt: BASE.prompt,
+    workflow_mode: "fully_automated",
+    sceneCount: 2,
+    shotsPerScene: 2,
+    fps: 24,
+    render: false,
+    enrich: false,
+    narration: "The lighthouse held its ground against the black water.",
+    soundtrack: true,
+    musicStyle: "cinematic orchestral",
+  });
+
+  assert.ok(report.audio && report.audio.length === 2, "voiceover + soundtrack attached");
+  for (const track of report.audio!) {
+    assert.ok(track.durationMs > 0, `${track.role} has a duration`);
+    assert.ok(fs.existsSync(path.join(report.projectPath, track.src)), `audio file exists: ${track.src}`);
+  }
+
+  const timeline = JSON.parse(fs.readFileSync(report.timelinePath, "utf8")) as Timeline & {
+    audioTracks?: { role: string; startFrame: number; durationInFrames: number }[];
+  };
+  assert.ok(timeline.audioTracks && timeline.audioTracks.length === 2, "timeline carries audio tracks");
+  assert.ok(timeline.audioTracks!.every((t) => t.durationInFrames > 0), "audio tracks have frame durations");
+});

@@ -10,6 +10,7 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
   OffthreadVideo,
   Sequence,
@@ -29,12 +30,22 @@ export interface TimelineItem {
   transitionInFrames: number;
 }
 
+export interface AudioTrackData {
+  id: string;
+  src: string;
+  role: "voiceover" | "soundtrack" | "sfx";
+  startFrame: number;
+  durationInFrames: number;
+  volume: number;
+}
+
 export interface TimelineData {
   fps: number;
   width: number;
   height: number;
   durationInFrames: number;
   items: TimelineItem[];
+  audioTracks?: AudioTrackData[];
 }
 
 export interface CinemaProps {
@@ -114,6 +125,16 @@ export const CinemaTimeline: React.FC<CinemaProps> = ({ timeline }) => {
           name={item.shotId}
         >
           <Clip item={item} />
+        </Sequence>
+      ))}
+      {(data.audioTracks ?? []).map((track) => (
+        <Sequence
+          key={track.id}
+          from={track.startFrame}
+          durationInFrames={track.durationInFrames}
+          name={track.role}
+        >
+          {track.src ? <Audio src={staticFile(track.src)} volume={track.volume} /> : null}
         </Sequence>
       ))}
     </AbsoluteFill>

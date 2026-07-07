@@ -1,92 +1,116 @@
-# 🎬 autonomous-cinema-mcp
+# 🎬 omnicinema-mcp
 
-A local **Model Context Protocol (MCP)** server that orchestrates an AI video‑production pipeline end‑to‑end:
+> A master **asset-creation engine** exposed as a local **Model Context Protocol (MCP)** server.
+> *(Package `omnicinema-mcp`. The project directory stays `autonomous-cinema-mcp` on the external drive.)*
 
-1. **Script & Continuity Engine** — generates a multi‑scene screenplay where every shot's opening frame is chained to exactly match the previous shot's closing frame.
-2. **Local Dependency Installer** — detects your OS and installs the render toolchain (Remotion, ffmpeg, Blender) *after explicit consent*, mapping caches to your external volume.
-3. **Asset Acquisition** — fetches matching b‑roll from **official** stock APIs (Pexels, Pixabay, Unsplash) and, optionally, from **bring‑your‑own‑key** generative video providers (Replicate, fal.ai, Hugging Face).
-4. **Auto‑Montage Sequencer** — assembles a frame‑accurate [Remotion](https://remotion.dev) timeline (React/TypeScript) and renders an MP4.
-5. **Provider Discovery** — scans official public catalogs (Hugging Face Hub, GitHub) for new tools and files them for **human review** — never auto‑integrating anything.
+One local server that plans, generates, and assembles production assets end-to-end:
+
+- 🧠 **Multi-agent persona consultation** — a Director of Photography, Graphic Designer, Voice Director, and Music Producer "debate" and compile a rigid prompt strategy *before* anything is generated.
+- 🖼️ **Image & design engine** — cinematic photos, transparent logos, vector art, textures, UI mockups. Real offline SVG design + official image APIs (BYO key).
+- 🎙️ **Voiceover + full music engine** — narration, SFX, and complete multi-section songs across genres (hip-hop, rap, cinematic orchestral, rock, lo-fi, electronic) via MusicGen APIs **or** deterministic local synthesis (WAV **+** editable MIDI). Reports exact millisecond durations.
+- 🎞️ **Video pipeline** — screenplay with shot-to-shot frame continuity → stock/generative b-roll → frame-accurate Remotion montage (now with locked audio tracks) → MP4.
+- 🛡️ **Free-tier budget guard** — persistent usage tracking with a user-gate that halts before exhausting a quota.
+- 🔌 **Inter-tool REST API** — a localhost, token-authed endpoint so another local tool can request assets programmatically.
+- 🔭 **Human-in-the-loop discovery** — scans official catalogs and queues suggestions for explicit approval.
 
 ---
 
 ## ✋ Scope & ethics (please read)
 
-This project is deliberately built to stay on the right side of other services' Terms of Service. It **does**:
+Everything here uses **official, documented APIs with your own keys**, within each service's Terms of Service. It **does not**, and will not:
 
-- Use **official, documented APIs** with **your own API keys**, within each service's rate limits and terms.
-- Ship a **human‑in‑the‑loop** discovery flow that only *suggests* new providers.
-- Ask for **explicit consent** before installing anything on your machine.
+- reuse browser session tokens or scrape hosted web sandboxes (e.g. **Seedance / Higgsfield / Suno / Udio** web UIs) to obtain "free" generations or bypass paid tiers;
+- auto-integrate or execute arbitrary endpoints/code discovered online.
 
-It intentionally **does not**, and will not:
-
-- Reuse your browser session tokens or cookies to drive third‑party web UIs.
-- Scrape generative web apps (e.g. Seedance / Higgsfield web sandboxes) or bypass paid tiers / rate limits to obtain "free" generations.
-- Auto‑integrate or auto‑execute arbitrary endpoints or code discovered online.
-
-If a service offers no first‑party API you can get a key for, it is **out of scope** here. Want generative video? Bring a key for a provider that offers a real API (Replicate, fal.ai, Hugging Face, or your own endpoint) — see [Generative providers](#generative-providers-opt-in).
+If a service has no first-party API you can get a key for, it is **out of scope**. The always-available fallbacks — offline **SVG** design and offline **MIDI/WAV** music synthesis — need no keys and no network.
 
 ---
 
 ## Requirements
 
 - **Node.js ≥ 18.17** (developed on Node 26).
-- Optional, for rendering video: the Remotion toolchain (installed on demand) + a Chromium download that Remotion manages, and **ffmpeg**.
-- Optional: **Blender** for 3D/asset workflows.
-- An external volume if you want everything off your system drive (this repo defaults to `/Volumes/PortableSSD/autonomous-cinema-mcp`).
+- Optional, for video rendering: the Remotion toolchain (installed on demand) + **ffmpeg**.
+- Optional: **ffprobe** (part of ffmpeg) for measuring non-WAV audio durations.
+- An external volume if you want everything off your system drive (defaults to `/Volumes/PortableSSD/autonomous-cinema-mcp`).
 
 ## Install
 
 ```bash
-# 1. Clone onto your external volume (recommended)
-cd /Volumes/PortableSSD
-git clone <your-fork-url> autonomous-cinema-mcp
-cd autonomous-cinema-mcp
-
-# 2. Install the core server (lightweight) and build
-npm install
-npm run build
-
-# 3. (Optional) install the render toolchain when you want to render video
-npm run setup:render
+cd /Volumes/PortableSSD/autonomous-cinema-mcp
+npm install          # core server (lightweight)
+npm run build        # compile to dist/
+npm run setup:render # optional: install the Remotion render toolchain
+npm install -g .     # optional: expose the `omnicinema-mcp` bin globally
 ```
 
-Global install (exposes the `autonomous-cinema-mcp` bin):
+---
+
+## Onboarding
+
+### 1. The limits database
+
+The budget guard persists usage to **`data/usage-limits.json`**. You don't create it by hand — it's auto-created on first use and rolls daily/weekly/monthly windows forward automatically. Each provider has a conservative default guard rail; override any of them via env:
 
 ```bash
-npm install -g .
+# LIMIT_<PROVIDER>_<DAILY|WEEKLY|MONTHLY>=<integer>
+LIMIT_HUGGINGFACE_DAILY=250
+LIMIT_REPLICATE_MONTHLY=1000
 ```
 
-## Configure
+Inspect current usage anytime with the `check_limits` tool. When a generative call would exceed a quota (or nearly exhaust the daily allowance), the tool **halts** and returns a cost breakdown; re-issue with `approveOverBudget: true` to proceed.
+
+### 2. Dependencies
+
+`npm install` gets the core server. `npm run setup:render` adds Remotion for video. The `install_dependencies` tool can detect your OS and install ffmpeg/Blender/Remotion **after explicit consent** (preview with `consent:false`, execute with `consent:true`).
+
+### 3. Environment keys
 
 ```bash
-cp .env.example .env
-# then edit .env and add ONLY the keys you have
+cp .env.example .env   # then fill in ONLY the keys you have
 ```
 
-| Variable | Purpose | Get a key |
+| Variable | Enables | Get a key |
 | --- | --- | --- |
-| `PEXELS_API_KEY` | Stock video/photos | <https://www.pexels.com/api/> |
-| `PIXABAY_API_KEY` | Stock video/images | <https://pixabay.com/api/docs/> |
-| `UNSPLASH_ACCESS_KEY` | Stock stills (attribution required) | <https://unsplash.com/developers> |
-| `REPLICATE_API_TOKEN` + `REPLICATE_VIDEO_MODEL` | Generative video | <https://replicate.com> |
-| `FAL_API_KEY` + `FAL_VIDEO_MODEL` | Generative video | <https://fal.ai> |
-| `HUGGINGFACE_API_TOKEN` + `HF_VIDEO_MODEL` | Generative video | <https://huggingface.co> |
-| `ANTHROPIC_API_KEY` | Optional screenplay enrichment | <https://console.anthropic.com> |
+| `PEXELS_API_KEY` / `PIXABAY_API_KEY` / `UNSPLASH_ACCESS_KEY` | Stock video/photos/stills | pexels.com/api · pixabay.com/api/docs · unsplash.com/developers |
+| `FREESOUND_API_KEY` | Stock SFX / ambience | freesound.org/apiv2/apply |
+| `HUGGINGFACE_API_TOKEN` + `HF_IMAGE_MODEL` / `HF_TTS_MODEL` / `HF_MUSIC_MODEL` / `HF_VIDEO_MODEL` | HF Inference image / TTS / music / video | huggingface.co/settings/tokens |
+| `REPLICATE_API_TOKEN` + `REPLICATE_IMAGE_MODEL` / `REPLICATE_MUSIC_MODEL` / `REPLICATE_VIDEO_MODEL` | Replicate image / music / video | replicate.com |
+| `FAL_API_KEY` + `FAL_VIDEO_MODEL` | fal.ai video | fal.ai |
+| `ANTHROPIC_API_KEY` | Optional screenplay enrichment | console.anthropic.com |
 
-Everything the pipeline writes (screenplays, downloads, timelines, renders) stays under `CINEMA_ROOT` (defaults to the repo directory).
+Model ids are **yours to choose**, so the tool tracks new models (FLUX, Kokoro, MusicGen, …) without code changes. With **no keys at all**, the engines still produce real offline output (SVG designs, synthesized music, placeholder footage).
 
-## Use it as an MCP server
+### 4. The cross-tool programmatic API
 
-Register the server in your MCP client. For **Claude Desktop**, edit
-`~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
-`%APPDATA%\Claude\claude_desktop_config.json` (Windows) — see
-[`examples/claude_desktop_config.json`](examples/claude_desktop_config.json):
+Start the localhost REST server so another local tool can drive this engine:
+
+```
+ipc_start  →  { url: "http://127.0.0.1:8787", token: "…" }
+```
+
+Then, from any local process:
+
+```bash
+TOKEN=…   # from ipc_start (also stored in data/ipc-token.txt)
+curl -s localhost:8787/schema -H "Authorization: Bearer $TOKEN"          # metadata contract
+curl -s localhost:8787/limits -H "Authorization: Bearer $TOKEN"          # usage
+curl -s localhost:8787/assets/image -H "Authorization: Bearer $TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"assetKind":"logo","subject":"Nova Labs","style":"vibrant"}'
+```
+
+**Security:** bound to `127.0.0.1`, bearer-token required (auto-generated to `data/ipc-token.txt`, mode 0600), no CORS, no code execution. Over-budget requests return **HTTP 402** with a breakdown; retry with `"approveOverBudget": true`.
+
+---
+
+## Register as an MCP server
+
+**Claude Desktop** (`claude_desktop_config.json`) — see [`examples/claude_desktop_config.json`](examples/claude_desktop_config.json):
 
 ```json
 {
   "mcpServers": {
-    "autonomous-cinema": {
+    "omnicinema": {
       "command": "node",
       "args": ["/Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js"],
       "env": { "CINEMA_ROOT": "/Volumes/PortableSSD/autonomous-cinema-mcp" }
@@ -95,104 +119,79 @@ Register the server in your MCP client. For **Claude Desktop**, edit
 }
 ```
 
-For **Claude Code**:
+**Claude Code:** `claude mcp add omnicinema -- node /Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js`
 
-```bash
-claude mcp add autonomous-cinema -- node /Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js
-```
+## Tools (15)
 
-Restart the client; the tools below become available.
+| Tool | Purpose |
+| --- | --- |
+| `consult_personas` | Run the persona debate and return the compiled brief (no generation). |
+| `generate_image` | Cinematic photo / logo / vector art / texture / UI mockup. |
+| `generate_voiceover` | Spoken narration with precise ms duration. |
+| `generate_soundtrack` | Full multi-section song in any genre (WAV + MIDI). |
+| `generate_sfx` | Sound effect / ambience. |
+| `check_limits` | Per-provider free-tier usage. |
+| `run_cinema_pipeline` | Screenplay → assets → montage → MP4 (optional `narration`, `soundtrack`). |
+| `compile_montage` | Finish an interactive video project. |
+| `install_dependencies` | Consent-gated OS dependency installer. |
+| `list_providers` | Curated registry + configured status. |
+| `discover_providers` / `approve_suggestion` | Review-only discovery + explicit promotion. |
+| `ipc_start` / `ipc_status` / `ipc_stop` | Control the inter-tool REST server. |
 
-## Tools
+## Personas
 
-### `run_cinema_pipeline`
-The main entry point.
+Each asset kind has a **lead** persona (and sometimes advisors). The consultation compiles a positive prompt, a negative prompt, and technical parameters, with a transcript of the debate.
 
-| Param | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `prompt` | string | — | The video concept. |
-| `workflow_mode` | `fully_automated` \| `interactive_montage` | `fully_automated` | Interactive pauses after downloads so you can arrange clips before compiling. |
-| `sceneCount` | int 1–12 | derived | Number of scenes. |
-| `shotsPerScene` | int 1–6 | 2 | Shots per scene. |
-| `shotDurationSeconds` | number 1–30 | 4 | Seconds per shot. |
-| `fps` / `width` / `height` | int | 30 / 1920 / 1080 | Output format. |
-| `style` | string | `modern cinematic` | e.g. `noir`, `neon cyberpunk`. |
-| `prefer` | `video` \| `image` | `video` | Motion b‑roll vs stills. |
-| `generative` | boolean | `false` | Opt in to generative providers (needs a configured key). |
-| `render` | boolean | `true`\* | Render now if Remotion is installed. |
+| Persona | Leads | Dictates |
+| --- | --- | --- |
+| Director of Photography | cinematic-photo, texture | lens, volumetric lighting, shadows, angle, depth of field |
+| Graphic Designer / Vector Artist | logo, vector-art, ui-mockup | flat color, padding, SVG-clean geometry, palette |
+| Voice Director & Audio Engineer | voiceover, sfx (advises soundtrack) | pacing/WPM, inflection, ducking, frequency treatment |
+| Music Producer & Beats Engineer | soundtrack | BPM, key, verse/chorus structure, instrumentation |
 
-\* Only in `fully_automated` mode.
+## Audio & music engine
 
-### Other tools
-- **`compile_montage`** `{ projectId, render? }` — finish an interactive project (honors an optional `montage-order.json` you drop into the project folder).
-- **`install_dependencies`** `{ consent, targets? }` — preview (`consent:false`) or run (`consent:true`) the dependency install.
-- **`list_providers`** — show the curated registry and which providers are configured.
-- **`discover_providers`** `{ query }` — append candidate tools to `discovery-suggestions.json` for review (activates nothing).
-- **`approve_suggestion`** `{ suggestionId, approve }` — explicitly promote a reviewed suggestion into the registry (added disabled + unimplemented).
-
-## Workflow modes
-
-- **`fully_automated`** — screenplay → assets → timeline → validate → render, in one call.
-- **`interactive_montage`** — stops after asset acquisition. Open the project folder, rearrange/replace clips, optionally write `montage-order.json` (an array of clip filenames in the order you want), then call `compile_montage`.
-
-## Generative providers (opt‑in)
-
-Set `generative: true` **and** configure one provider (token + model id). The pipeline tries providers in the registry's order, per shot, and falls back to stock/placeholder if generation fails. Model ids are **yours to choose** so the tool stays current without code changes.
+`generate_soundtrack` composes a full arrangement (intro/verse/chorus/…): the Music Producer plans **BPM, key, structure, and instrumentation** per genre, then the engine either calls a MusicGen/AudioCraft API (`generative:true` + a configured key) or renders it locally to **WAV + editable MIDI** with deterministic synthesis (bass, chords, drums, arp). Every audio asset returns an exact **millisecond duration**, so `run_cinema_pipeline`'s `narration`/`soundtrack` options lock audio to the video timeline frame-accurately.
 
 ## Output layout
 
 ```
-projects/<timestamp>_<slug>/
-  screenplay.json      # structured screenplay + continuity frames
-  screenplay.md        # human‑readable screenplay
-  timeline.json        # frame‑accurate montage (Remotion props)
-  attributions.txt     # licenses + attributions for every clip
-  manifest.json        # the pipeline report
-  <shot-id>.{mp4,jpg,svg}   # one asset per shot
-output/<projectId>.mp4  # rendered video (if rendered)
+assets/                      # standalone image/audio assets (<subject>_<kind>.<ext>, plus .mid)
+projects/<id>/               # a video project: screenplay, timeline.json, clips, audio, manifest
+output/<id>.mp4              # rendered video
+data/usage-limits.json       # budget guard database  (gitignored)
+data/review-queue.json       # discovery suggestions   (gitignored)
+data/ipc-token.txt           # IPC bearer token 0600   (gitignored)
 ```
-
-## Rendering
-
-Rendering shells out to the Remotion CLI (kept as an **optional dependency** so the core server stays light). Install it with `npm run setup:render`. The composition is [`remotion/compositions/CinemaTimeline.tsx`](remotion/compositions/CinemaTimeline.tsx); it's data‑driven by `timeline.json` via `calculateMetadata`.
-
-> **Remotion licensing:** Remotion is free for individuals and small teams but requires a company license above a threshold. Review <https://remotion.dev/license> before commercial use.
 
 ## Test / eval
 
 ```bash
-npm run eval   # (alias: npm test)
+npm run eval   # (alias: npm test) — 29 tests, fully offline (no network, no keys)
 ```
 
-The suite runs **offline** (placeholders, no network) and asserts:
-- every shot opens on the previous shot's closing frame (continuity),
-- generation is deterministic per prompt,
-- the timeline tiles with **no gaps/overlaps** and **no missing assets**, and the validator catches an injected gap,
-- `interactive_montage` pauses without rendering.
+Covers persona lead-selection & determinism, budget rollover/gate, music-synthesis duration accuracy + valid WAV/MIDI, offline SVG design, the IPC auth/schema/generate contract, discovery safety gates, and the video pipeline (continuity, timeline tiling, audio lock).
 
 ## Project structure
 
 ```
 src/
-  server.ts            # MCP server + tool schemas
-  index.ts             # bin entry (stdio)
-  config.ts            # paths pinned to CINEMA_ROOT (the external volume)
-  pipeline/            # script-engine + orchestrator
-  assets/              # stock clients (pexels/pixabay/unsplash) + placeholder
-  providers/           # generative providers + registry
-  discovery/           # review-only provider discovery
-  installer/           # consent-gated system installer
-  montage/             # timeline builder/validator + Remotion render
-remotion/              # React/TS composition (rendered via Remotion CLI)
-skills/system-installer-skill/  # setup skill
-test/                  # eval suite
-tools-registry.json    # curated provider routing config
+  server.ts             # MCP server + 15 tools
+  personas/             # DoP, designer, voice director, music producer + consultation
+  pipeline/             # image-engine, audio-engine, runCinemaPipeline, script-engine
+  audio/                # wav, theory, synth, midi
+  assets/               # stock clients + offline vector/SVG designer
+  providers/            # image/audio/video providers + registry
+  limits/               # budget guard
+  api/                  # localhost IPC REST server
+  discovery/            # review-only provider discovery
+  montage/              # timeline builder/validator + Remotion render
+remotion/               # React/TS composition (video + audio tracks)
+test/                   # 6 offline test suites
 ```
 
-## Contributing
+> **Remotion licensing:** free for individuals and small teams; a company license applies above a threshold — see <https://remotion.dev/license>.
 
-Issues and PRs welcome. Please keep the [scope & ethics](#-scope--ethics-please-read) boundary intact: official APIs and user‑owned keys only; no scraping, token reuse, or auto‑integration of untrusted code.
+## Contributing & License
 
-## License
-
-[MIT](LICENSE). Downloaded assets remain under **their own** licenses — see each project's `attributions.txt`.
+[MIT](LICENSE). Downloaded/generated assets keep **their own** licenses (see each project's `attributions.txt`). Please keep the scope boundary intact: official APIs + user-owned keys only; no scraping, token reuse, or auto-integration of untrusted code.

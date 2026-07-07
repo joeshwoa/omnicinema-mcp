@@ -12,7 +12,19 @@ import { configuredStockProviders } from "./assets/stockManager.js";
 import { describeProviders } from "./providers/registry.js";
 import { discover, approveSuggestion, listSuggestions } from "./discovery/discover.js";
 import { installDependencies } from "./installer/systemInstaller.js";
+import { consult, transcriptLines } from "./personas/consultation.js";
+import { generateImageAsset } from "./pipeline/image-engine.js";
+import { generateVoiceover, generateSoundtrack, generateSfx } from "./pipeline/audio-engine.js";
+import { isHalt, type EngineResult } from "./pipeline/asset-results.js";
+import { getStatus } from "./limits/limit-manager.js";
+import { ipcServer } from "./api/ipc-protocol.js";
+import type { AssetKind } from "./personas/types.js";
 import type { PipelineReport } from "./types.js";
+
+const TRACKED_LIMIT_PROVIDERS = [
+  "huggingface", "replicate", "fal", "pexels", "pixabay", "unsplash", "freesound",
+  "huggingface-image", "replicate-image", "huggingface-tts", "huggingface-music", "replicate-music",
+];
 
 type TextResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -52,10 +64,29 @@ function summarizeReport(r: PipelineReport): string {
   return lines.filter(Boolean).join("\n");
 }
 
+function engineResult(r: EngineResult): TextResult {
+  if (isHalt(r)) {
+    const text =
+      `⛔ BUDGET GATE — approval required before spending a free quota.\n` +
+      `${r.reason}\n\nCost breakdown:\n${r.breakdown.join("\n")}\n\n` +
+      `Re-run the same tool with approveOverBudget:true to proceed.`;
+    return ok(r, text);
+  }
+  const summary =
+    `✅ ${r.kind} via ${r.provider} (${r.source})\n` +
+    `File: ${r.path}\n` +
+    (r.durationMs ? `Duration: ${r.durationMs} ms\n` : "") +
+    (r.width ? `Size: ${r.width}×${r.height}\n` : "") +
+    `License: ${r.license}\n` +
+    `Lead persona: ${r.brief.leadPersona}` +
+    (r.warnings.length ? `\n⚠ ${r.warnings.join("; ")}` : "");
+  return ok(r, summary);
+}
+
 export function createServer(): McpServer {
   const server = new McpServer({
-    name: "autonomous-cinema-mcp",
-    version: "0.1.0",
+    name: "omnicinema-mcp",
+    version: "0.2.0",
   });
 
   server.registerTool(
@@ -85,6 +116,9 @@ export function createServer(): McpServer {
         prefer: z.enum(["video", "image"]).optional().describe("Prefer motion b-roll ('video') or stills ('image')."),
         generative: z.boolean().optional().describe("Opt in to bring-your-own-key generative video providers (default false)."),
         render: z.boolean().optional().describe("Render the MP4 now if Remotion is installed (default true in fully_automated mode)."),
+        narration: z.string().optional().describe("Optional narration script; generated offline and locked to the timeline as a voiceover track."),
+        soundtrack: z.boolean().optional().describe("Add an offline-synthesized soundtrack bed locked to the timeline."),
+        musicStyle: z.string().optional().describe("Genre/style for the soundtrack, e.g. 'lo-fi', 'cinematic orchestral', 'hip-hop'."),
       },
     },
     async (args) =>
@@ -167,7 +201,12 @@ export function createServer(): McpServer {
     async (args) =>
       guard(async () => {
         const result = await discover(args.query);
-        return ok(result, `Discovery added ${result.added} new suggestion(s); ${result.total} total await review. Nothing was activated.`);
+        const top = result.suggestions.slice(0, 5).map((s) => `  • [${s.source}] ${s.id} (★${s.signal}) — ${s.url}`);
+        const alert =
+          `🔔 ADDON REVIEW ALERT — ${result.added} new suggestion(s) queued (${result.total} awaiting review).\n` +
+          `Nothing was activated. Review data/review-queue.json, then call approve_suggestion(suggestionId, approve:true).\n` +
+          (top.length ? `\nTop candidates:\n${top.join("\n")}` : "");
+        return ok(result, alert);
       }),
   );
 
@@ -188,6 +227,158 @@ export function createServer(): McpServer {
         const result = approveSuggestion(args.suggestionId, args.approve);
         return ok({ ...result, pending: listSuggestions().filter((s) => s.status === "needs_review").length }, result.message);
       }),
+  );
+
+  server.registerTool(
+    "consult_personas",
+    {
+      title: "Consult Design Personas",
+      description:
+        "Run the multi-agent persona consultation for an asset kind and return the compiled " +
+        "PromptBrief (positive + negative prompt, technical params, and the debate transcript) " +
+        "WITHOUT generating anything. Use to preview/tune the prompt strategy first.",
+      inputSchema: {
+        assetKind: z.enum(["cinematic-photo", "logo", "vector-art", "texture", "ui-mockup", "voiceover", "soundtrack", "sfx"]).describe("What to design."),
+        subject: z.string().min(1).describe("The subject/description."),
+        style: z.string().optional().describe("Style hint, e.g. 'noir', 'lo-fi', 'brutalist'."),
+        aspectRatio: z.string().optional().describe("e.g. '16:9', '1:1', '9:16'."),
+      },
+    },
+    async (args) =>
+      guard(async () => {
+        const brief = consult(args);
+        return ok(brief, `🎯 ${brief.leadPersona} leads (advisors: ${brief.advisors.join(", ") || "none"}).\n\nStrategy:\n- ${transcriptLines(brief).join("\n- ")}\n\nPrompt: ${brief.positivePrompt}`);
+      }),
+  );
+
+  server.registerTool(
+    "generate_image",
+    {
+      title: "Generate Image / Design Asset",
+      description:
+        "Create a cinematic photo, transparent logo, vector art, texture, or UI mockup. Vector kinds " +
+        "render as real SVG offline; photoreal kinds use a configured image API when generative=true, " +
+        "else a local placeholder. Budget-guarded: an over-quota request returns a halt with a cost " +
+        "breakdown — retry with approveOverBudget:true.",
+      inputSchema: {
+        assetKind: z.enum(["cinematic-photo", "logo", "vector-art", "texture", "ui-mockup"]).describe("Type of visual asset."),
+        subject: z.string().min(1).describe("What to create."),
+        style: z.string().optional(),
+        aspectRatio: z.string().optional(),
+        generative: z.boolean().optional().describe("Use an official image API (needs a configured key)."),
+        approveOverBudget: z.boolean().optional().describe("Proceed even if the budget guard flags the request."),
+      },
+    },
+    async (args) => guard(async () => engineResult(await generateImageAsset(args))),
+  );
+
+  server.registerTool(
+    "generate_voiceover",
+    {
+      title: "Generate Voiceover",
+      description:
+        "Generate spoken narration. Uses a configured TTS API when generative=true, else a local " +
+        "placeholder. Returns a precise millisecond duration for the sequencer. Budget-guarded.",
+      inputSchema: {
+        subject: z.string().min(1).describe("Topic or the narration script itself."),
+        script: z.string().optional().describe("Explicit script (overrides subject as the spoken text)."),
+        style: z.string().optional().describe("e.g. 'dramatic', 'calm documentary', 'energetic'."),
+        generative: z.boolean().optional(),
+        approveOverBudget: z.boolean().optional(),
+      },
+    },
+    async (args) => guard(async () => engineResult(await generateVoiceover({ ...args, assetKind: "voiceover" }))),
+  );
+
+  server.registerTool(
+    "generate_soundtrack",
+    {
+      title: "Generate Soundtrack / Music",
+      description:
+        "Compose a full instrumental across genres (hip-hop, rap, cinematic orchestral, rock, lo-fi, " +
+        "electronic). The Music Producer persona plans BPM/key/structure/instrumentation. Renders via a " +
+        "configured MusicGen API when generative=true, else deterministic local synthesis (WAV + editable " +
+        "MIDI). Returns exact duration. Budget-guarded.",
+      inputSchema: {
+        subject: z.string().min(1).describe("Theme/mood, e.g. 'rainy midnight city'."),
+        style: z.string().optional().describe("Genre, e.g. 'hip-hop', 'cinematic orchestral', 'lo-fi', 'electronic'."),
+        generative: z.boolean().optional(),
+        approveOverBudget: z.boolean().optional(),
+      },
+    },
+    async (args) => guard(async () => engineResult(await generateSoundtrack({ ...args, assetKind: "soundtrack" }))),
+  );
+
+  server.registerTool(
+    "generate_sfx",
+    {
+      title: "Generate Sound Effect",
+      description:
+        "Produce a sound effect / ambience. Uses the Freesound API when generative=true, else a local " +
+        "synthesized transient. Returns exact duration. Budget-guarded.",
+      inputSchema: {
+        subject: z.string().min(1).describe("The effect, e.g. 'whoosh transition', 'rain ambience'."),
+        style: z.string().optional(),
+        generative: z.boolean().optional(),
+        approveOverBudget: z.boolean().optional(),
+      },
+    },
+    async (args) => guard(async () => engineResult(await generateSfx({ ...args, assetKind: "sfx" }))),
+  );
+
+  server.registerTool(
+    "check_limits",
+    {
+      title: "Check Free-Tier Usage",
+      description: "Report per-provider free-tier usage from data/usage-limits.json (daily/weekly/monthly).",
+      inputSchema: {
+        provider: z.string().optional().describe("A single provider slug; omit for all tracked providers."),
+      },
+    },
+    async (args) =>
+      guard(async () => {
+        const providers = args.provider ? [args.provider] : TRACKED_LIMIT_PROVIDERS;
+        const statuses = providers.map((p) => getStatus(p));
+        return ok({ providers: statuses }, `Usage for ${statuses.length} provider(s). Guard rails halt over-quota generative calls unless approved.`);
+      }),
+  );
+
+  server.registerTool(
+    "ipc_start",
+    {
+      title: "Start Inter-Tool IPC Server",
+      description:
+        "Start the localhost-only REST API so another local tool can request assets programmatically. " +
+        "Returns the base URL and bearer token. Bound to 127.0.0.1; token stored in data/ipc-token.txt.",
+      inputSchema: {
+        port: z.number().int().min(0).max(65535).optional().describe("Port (default from OMNICINEMA_IPC_PORT / 8787)."),
+      },
+    },
+    async (args) =>
+      guard(async () => {
+        const info = await ipcServer.start(args.port);
+        return ok(info, `🔌 IPC server on ${info.url}\nBearer token: ${info.token}\nGET ${info.url}/schema for the metadata contract.`);
+      }),
+  );
+
+  server.registerTool(
+    "ipc_status",
+    {
+      title: "IPC Server Status",
+      description: "Report whether the inter-tool IPC server is running and its address.",
+      inputSchema: {},
+    },
+    async () => guard(async () => ok({ running: ipcServer.running, ...(ipcServer.running ? ipcServer.info : {}) }, ipcServer.running ? `Running on ${ipcServer.info.url}` : "IPC server is not running.")),
+  );
+
+  server.registerTool(
+    "ipc_stop",
+    {
+      title: "Stop IPC Server",
+      description: "Stop the inter-tool IPC server if running.",
+      inputSchema: {},
+    },
+    async () => guard(async () => { await ipcServer.stop(); return ok({ running: false }, "IPC server stopped."); }),
   );
 
   return server;

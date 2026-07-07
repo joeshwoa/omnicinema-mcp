@@ -58,12 +58,17 @@ export const paths = {
   projects: path.join(CINEMA_ROOT, "projects"),
   remotion: path.join(REPO_ROOT, "remotion"),
   toolsRegistry: path.join(REPO_ROOT, "tools-registry.json"),
-  discoverySuggestions: path.join(REPO_ROOT, "discovery-suggestions.json"),
+  data: path.join(CINEMA_ROOT, "data"),
+  usageLimits: path.join(CINEMA_ROOT, "data", "usage-limits.json"),
+  reviewQueue: path.join(CINEMA_ROOT, "data", "review-queue.json"),
+  ipcToken: path.join(CINEMA_ROOT, "data", "ipc-token.txt"),
+  /** @deprecated use `reviewQueue`; kept as an alias for the discovery module. */
+  discoverySuggestions: path.join(CINEMA_ROOT, "data", "review-queue.json"),
 } as const;
 
 /** Create every runtime directory up front. Safe to call repeatedly. */
 export function ensureDirs(): void {
-  for (const dir of [paths.assets, paths.cache, paths.output, paths.projects]) {
+  for (const dir of [paths.assets, paths.cache, paths.output, paths.projects, paths.data]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
@@ -74,13 +79,35 @@ export function projectDir(projectId: string): string {
 }
 
 export const env = {
+  // Stock
   pexels: () => process.env.PEXELS_API_KEY?.trim() || "",
   pixabay: () => process.env.PIXABAY_API_KEY?.trim() || "",
   unsplash: () => process.env.UNSPLASH_ACCESS_KEY?.trim() || "",
+  freesound: () => process.env.FREESOUND_API_KEY?.trim() || "",
+  // Generative auth (bring-your-own-key)
   huggingface: () => process.env.HUGGINGFACE_API_TOKEN?.trim() || "",
   replicate: () => process.env.REPLICATE_API_TOKEN?.trim() || "",
   fal: () => process.env.FAL_API_KEY?.trim() || "",
+  // Model ids (user-chosen so the tool stays current without code changes)
+  hfImageModel: () => process.env.HF_IMAGE_MODEL?.trim() || "",
+  hfTtsModel: () => process.env.HF_TTS_MODEL?.trim() || "",
+  replicateImageModel: () => process.env.REPLICATE_IMAGE_MODEL?.trim() || "",
+  replicateMusicModel: () => process.env.REPLICATE_MUSIC_MODEL?.trim() || "",
+  falImageModel: () => process.env.FAL_IMAGE_MODEL?.trim() || "",
+  // LLM enrichment (optional)
   anthropic: () => process.env.ANTHROPIC_API_KEY?.trim() || "",
   anthropicModel: () => process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5",
+  // Behavior
   allowInstall: () => process.env.CINEMA_ALLOW_INSTALL?.trim() === "1",
+  // Inter-tool IPC server
+  ipcHost: () => process.env.OMNICINEMA_IPC_HOST?.trim() || "127.0.0.1",
+  ipcPort: () => Number.parseInt(process.env.OMNICINEMA_IPC_PORT?.trim() || "8787", 10),
+  ipcToken: () => process.env.OMNICINEMA_IPC_TOKEN?.trim() || "",
+  /** Read an integer quota override from env, e.g. LIMIT_HUGGINGFACE_DAILY. */
+  quota: (provider: string, period: "DAILY" | "WEEKLY" | "MONTHLY"): number | null => {
+    const raw = process.env[`LIMIT_${provider.toUpperCase()}_${period}`]?.trim();
+    if (!raw) return null;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) ? n : null;
+  },
 } as const;

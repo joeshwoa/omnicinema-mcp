@@ -12,8 +12,10 @@ import { ensureDirs, paths, projectDir as resolveProjectDir } from "../config.js
 import { log } from "../logger.js";
 import { acquireAssets } from "../assets/stockManager.js";
 import { anyGenerativeConfigured, generateForShot } from "../providers/registry.js";
-import { buildTimeline, validateTimeline, writeTimeline } from "../montage/timeline.js";
+import { attachAudio, auditAudioSync, buildTimeline, validateTimeline, writeTimeline, type AudioAttachment } from "../montage/timeline.js";
 import { isRemotionAvailable, renderTimeline } from "../montage/render.js";
+import { generateSoundtrack, generateVoiceover } from "./audio-engine.js";
+import { isHalt } from "./asset-results.js";
 import type { AssetClip, PipelineReport, Screenplay, Shot, Timeline, WorkflowMode } from "../types.js";
 import { buildScreenplay, enrichScreenplay, verifyContinuity } from "./script-engine.js";
 
@@ -31,6 +33,12 @@ export interface CinemaPipelineInput {
   generative?: boolean;
   render?: boolean;
   enrich?: boolean;
+  /** Optional narration script; generated offline and locked to the timeline. */
+  narration?: string;
+  /** Add an offline-synthesized soundtrack bed. */
+  soundtrack?: boolean;
+  /** Genre/style for the soundtrack (e.g. "lo-fi", "cinematic orchestral"). */
+  musicStyle?: string;
 }
 
 export async function runCinemaPipeline(input: CinemaPipelineInput): Promise<PipelineReport> {
@@ -102,8 +110,36 @@ export async function runCinemaPipeline(input: CinemaPipelineInput): Promise<Pip
   const clips: AssetClip[] = shots.map((s) => clipByShot.get(s.id)!).filter(Boolean);
   writeAttributions(projectAbsDir, screenplay, clips);
 
-  // 3. Timeline + validation.
-  const timeline = buildTimeline(screenplay, clips);
+  // 3. Timeline + optional audio + validation.
+  let timeline = buildTimeline(screenplay, clips);
+  const audioSummary: { role: string; src: string; durationMs: number }[] = [];
+  if (input.narration || input.soundtrack) {
+    const attachments: AudioAttachment[] = [];
+    if (input.narration) {
+      const vo = await generateVoiceover({
+        assetKind: "voiceover", subject: input.narration, style: input.style,
+        outDir: projectAbsDir, generative: false,
+      });
+      if (!isHalt(vo)) {
+        attachments.push({ src: vo.relPath, role: "voiceover", durationMs: vo.durationMs ?? 0 });
+        audioSummary.push({ role: "voiceover", src: vo.relPath, durationMs: vo.durationMs ?? 0 });
+      }
+    }
+    if (input.soundtrack) {
+      const st = await generateSoundtrack({
+        assetKind: "soundtrack", subject: input.prompt,
+        style: input.musicStyle || input.style || "cinematic",
+        outDir: projectAbsDir, generative: false,
+      });
+      if (!isHalt(st)) {
+        attachments.push({ src: st.relPath, role: "soundtrack", durationMs: st.durationMs ?? 0, volume: input.narration ? 0.28 : 0.5 });
+        audioSummary.push({ role: "soundtrack", src: st.relPath, durationMs: st.durationMs ?? 0 });
+      }
+    }
+    timeline = attachAudio(timeline, attachments);
+    for (const issue of auditAudioSync(timeline)) warnings.push(`audio:${issue.level}: ${issue.message}`);
+  }
+
   const timelinePath = writeTimeline(projectAbsDir, timeline);
   const issues = validateTimeline(timeline, projectAbsDir);
   for (const issue of issues) {
@@ -139,6 +175,7 @@ export async function runCinemaPipeline(input: CinemaPipelineInput): Promise<Pip
     projectId, projectAbsDir, screenplay, timeline, screenplayPath, timelinePath,
     clips, renderedVideoPath, warnings, nextSteps, paused, mode: input.workflow_mode,
   });
+  if (audioSummary.length) report.audio = audioSummary;
   writeManifest(projectAbsDir, report);
   return report;
 }

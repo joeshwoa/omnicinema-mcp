@@ -1,13 +1,14 @@
 {
-  "name": "autonomous-cinema-mcp",
-  "version": "0.1.0",
-  "description": "A local Model Context Protocol (MCP) server that orchestrates an AI video-production pipeline: screenplay + shot continuity, legitimate stock/asset acquisition via official APIs, bring-your-own-key generative video providers, and Remotion-based auto-montage.",
+  "name": "omnicinema-mcp",
+  "version": "0.2.0",
+  "description": "A local Model Context Protocol (MCP) server: a master asset-creation engine with a multi-agent persona consultation framework, image/vector design, voiceover + full music/genre synthesis, a video pipeline (screenplay continuity + Remotion montage), a free-tier budget guard, a localhost inter-tool REST API, and human-in-the-loop provider discovery — all via official APIs with your own keys.",
   "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=18.17"
   },
   "bin": {
+    "omnicinema-mcp": "dist/index.js",
     "autonomous-cinema-mcp": "dist/index.js"
   },
   "main": "dist/index.js",
@@ -25,8 +26,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "tsx --test test/pipeline.test.ts",
-    "eval": "tsx --test test/pipeline.test.ts",
+    "test": "tsx --test test/*.test.ts",
+    "eval": "tsx --test test/*.test.ts",
     "setup:render": "npm install --include=optional remotion react react-dom @remotion/cli @remotion/bundler @remotion/renderer",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"
@@ -37,6 +38,13 @@
     "video",
     "remotion",
     "ai-video",
+    "image-generation",
+    "vector",
+    "svg",
+    "text-to-speech",
+    "music-generation",
+    "midi",
+    "personas",
     "screenplay",
     "montage",
     "pipeline",

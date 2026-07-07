@@ -13,10 +13,27 @@ import { log } from "../logger.js";
 import { fal } from "./fal.js";
 import { huggingface } from "./huggingface.js";
 import { replicate } from "./replicate.js";
+import { IMAGE_PROVIDERS } from "./image.js";
+import { MUSIC_PROVIDERS, TTS_PROVIDERS, freesound } from "./audio.js";
+import { pexels } from "../assets/stock/pexels.js";
+import { pixabay } from "../assets/stock/pixabay.js";
+import { unsplash } from "../assets/stock/unsplash.js";
 import type { GenOptions, GenResult, GenerativeProvider } from "./types.js";
 
 /** Code-backed generative providers, in default preference order. */
 export const GENERATIVE_PROVIDERS: GenerativeProvider[] = [replicate, fal, huggingface];
+
+/** Every code-backed provider with a live `configured()` check, by slug. */
+const CONFIGURED_CHECKS: { slug: string; configured(): boolean }[] = [
+  ...GENERATIVE_PROVIDERS,
+  ...IMAGE_PROVIDERS,
+  ...TTS_PROVIDERS,
+  ...MUSIC_PROVIDERS,
+  freesound,
+  pexels,
+  pixabay,
+  unsplash,
+];
 
 export interface RegistryEntry {
   slug: string;
@@ -51,10 +68,10 @@ export function loadRegistry(): ToolsRegistry {
 /** Enumerate providers with live "configured" status merged in. */
 export function describeProviders(): (RegistryEntry & { configured: boolean })[] {
   const registry = loadRegistry();
-  const codeBySlug = new Map(GENERATIVE_PROVIDERS.map((p) => [p.slug, p]));
+  const bySlug = new Map(CONFIGURED_CHECKS.map((p) => [p.slug, p]));
   return registry.providers.map((entry) => ({
     ...entry,
-    configured: codeBySlug.get(entry.slug)?.configured() ?? false,
+    configured: bySlug.get(entry.slug)?.configured() ?? false,
   }));
 }
 

@@ -1,16 +1,17 @@
 {
-  "//": "Copy the 'autonomous-cinema' block into your Claude Desktop config's mcpServers object.",
+  "//": "Copy the 'omnicinema' block into your Claude Desktop config's mcpServers object.",
   "//_location_macos": "~/Library/Application Support/Claude/claude_desktop_config.json",
   "//_location_windows": "%APPDATA%\\Claude\\claude_desktop_config.json",
   "mcpServers": {
-    "autonomous-cinema": {
+    "omnicinema": {
       "command": "node",
       "args": ["/Volumes/PortableSSD/autonomous-cinema-mcp/dist/index.js"],
       "env": {
         "CINEMA_ROOT": "/Volumes/PortableSSD/autonomous-cinema-mcp",
         "PEXELS_API_KEY": "",
         "PIXABAY_API_KEY": "",
-        "UNSPLASH_ACCESS_KEY": ""
+        "UNSPLASH_ACCESS_KEY": "",
+        "FREESOUND_API_KEY": ""
       }
     }
   }

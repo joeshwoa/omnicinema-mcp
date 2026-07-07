@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { AssetClip, Screenplay, Timeline, TimelineItem } from "../types.js";
+import type { AssetClip, AudioTrack, Screenplay, Timeline, TimelineItem } from "../types.js";
 
 export interface BuildTimelineOptions {
   /** Crossfade length in frames applied at the head of each item after the first. */
@@ -137,4 +137,56 @@ export function writeTimeline(projectDir: string, timeline: Timeline): string {
   fs.mkdirSync(projectDir, { recursive: true });
   fs.writeFileSync(dest, JSON.stringify(timeline, null, 2), "utf8");
   return dest;
+}
+
+/** Convert a millisecond duration to a frame count at the timeline's fps. */
+export function framesFromMs(ms: number, fps: number): number {
+  return Math.max(1, Math.round((ms / 1000) * fps));
+}
+
+export interface AudioAttachment {
+  src: string;
+  role: "voiceover" | "soundtrack" | "sfx";
+  durationMs: number;
+  startFrame?: number;
+  volume?: number;
+}
+
+const DEFAULT_VOLUME: Record<AudioAttachment["role"], number> = {
+  voiceover: 1,
+  soundtrack: 0.35, // ducked under narration
+  sfx: 0.8,
+};
+
+/**
+ * Attach audio tracks to a timeline, converting precise millisecond durations to
+ * frame positions so audio and video stay locked. Returns a new Timeline.
+ */
+export function attachAudio(timeline: Timeline, attachments: AudioAttachment[]): Timeline {
+  const audioTracks: AudioTrack[] = attachments.map((a, i) => ({
+    id: `audio-${i + 1}`,
+    src: a.src,
+    role: a.role,
+    startFrame: a.startFrame ?? 0,
+    durationInFrames: framesFromMs(a.durationMs, timeline.fps),
+    durationMs: a.durationMs,
+    volume: a.volume ?? DEFAULT_VOLUME[a.role],
+  }));
+  return { ...timeline, audioTracks };
+}
+
+/** Warn if audio runs past the video (or vice-versa) so the operator can trim. */
+export function auditAudioSync(timeline: Timeline): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (const track of timeline.audioTracks ?? []) {
+    const end = track.startFrame + track.durationInFrames;
+    if (end > timeline.durationInFrames) {
+      issues.push({
+        level: "warning",
+        itemId: track.id,
+        message: `Audio "${track.role}" ends at frame ${end}, past the ${timeline.durationInFrames}-frame video (Remotion will trim it).`,
+      });
+    }
+  }
+  return issues;
 }

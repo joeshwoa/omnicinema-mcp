@@ -22,7 +22,9 @@ projects/
 # Machine-specific npm cache mapping (written by the installer; absolute paths)
 .npmrc
 
-# Discovery review queue (machine-generated suggestions, human-reviewed)
+# Runtime data: usage counters, discovery review queue, IPC token (secret)
+data/*
+!data/.gitkeep
 discovery-suggestions.json
 
 # Remotion
