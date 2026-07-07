@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-eval:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20.x", "22.x"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      # Core server only — the Remotion render toolchain is optional and not
+      # needed for the build or the offline eval suite.
+      - name: Install (core, no optional Remotion)
+        run: npm ci --omit=optional --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Eval (offline: continuity + timeline tiling + no missing assets)
+        run: npm run eval
