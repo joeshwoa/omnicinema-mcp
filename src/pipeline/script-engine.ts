@@ -165,7 +165,14 @@ export function parseConcept(prompt: string): Concept {
   let setting: string[] = [];
   for (let j = rest.length - 1; j >= 0; j--) {
     if (!PREPOSITIONS.has(rest[j]!)) continue;
-    const np = stripDet(rest.slice(j + 1)).filter((w) => !PREPOSITIONS.has(w));
+    // The noun phrase ends at the next verb or preposition: "in cairo opening
+    // his cart" → "cairo", not "cairo opening his cart".
+    const after = stripDet(rest.slice(j + 1));
+    const np: string[] = [];
+    for (const w of after) {
+      if (PREPOSITIONS.has(w) || isVerbish(w)) break;
+      np.push(w);
+    }
     const nonTime = np.filter((w) => !TIME_WORDS.has(w));
     if (nonTime.length) {
       setting = nonTime.slice(0, 4);

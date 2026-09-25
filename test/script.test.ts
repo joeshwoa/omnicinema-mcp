@@ -81,3 +81,11 @@ test("asset queries are short and specific", () => {
     assert.ok(!/\b(lone|watching|roll)\b/.test(s.assetQuery), `query should not contain filler: ${s.assetQuery}`);
   }
 });
+
+test("setting stops at the next verb: a location mid-sentence is not swallowed", () => {
+  const c = parseConcept("a street food vendor in Cairo opening his cart at dawn");
+  assert.equal(c.subject, "street food vendor");
+  assert.equal(c.setting, "cairo");
+  const sp = buildScreenplay({ prompt: "a street food vendor in Cairo opening his cart at dawn", sceneCount: 3 });
+  for (const sc of sp.scenes) assert.doesNotMatch(sc.heading, /OPENING HIS CART/, sc.heading);
+});
