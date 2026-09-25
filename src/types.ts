@@ -40,6 +40,8 @@ export interface Shot {
   keywords: string[];
   /** A ready-to-use search/generation query derived from the shot. */
   assetQuery: string;
+  /** Film-grammar role: establishing, wide, medium, over-the-shoulder, close, detail. */
+  shotType?: string;
 }
 
 export interface Scene {
@@ -48,6 +50,8 @@ export interface Scene {
   /** Screenplay slugline, e.g. "EXT. NEON ALLEY - NIGHT". */
   heading: string;
   summary: string;
+  /** Story beat this scene plays (setup, inciting, rising, climax, resolution…). */
+  beat?: string;
   shots: Shot[];
 }
 
