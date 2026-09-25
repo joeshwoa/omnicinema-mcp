@@ -25,6 +25,7 @@ import { unsplash } from "./stock/unsplash.js";
 import type { StockHit, StockKind, StockProvider } from "./stock/types.js";
 import { generateStoryboardFrameSvg } from "./vector.js";
 import { rasterizeSvg } from "./raster.js";
+import { parseConcept } from "../pipeline/script-engine.js";
 
 export const STOCK_PROVIDERS: StockProvider[] = [pexels, pixabay, unsplash];
 
@@ -180,11 +181,13 @@ async function placeholderClip(sp: Screenplay, shot: Shot, idx: number, total: n
     shotNumber: idx + 1,
     shotCount: total,
     action: shot.action,
-    framing: shot.openingFrame.framing,
+    // A shot is designed to land on its closing frame; depict that.
+    framing: shot.closingFrame.framing,
     cameraMovement: shot.cameraMovement,
-    lighting: shot.openingFrame.lighting,
-    subjectPosition: shot.openingFrame.subjectPosition,
-    palette: shot.openingFrame.palette,
+    lighting: shot.closingFrame.lighting,
+    subjectPosition: shot.closingFrame.subjectPosition,
+    palette: shot.closingFrame.palette,
+    isPerson: parseConcept(sp.prompt).isPerson,
     durationSeconds: shot.durationSeconds,
     keywords: shot.keywords,
     footer: hadProviders ? "Storyboard frame — no matching stock clip" : "Offline storyboard frame — add a stock API key for real footage",

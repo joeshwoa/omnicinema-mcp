@@ -851,6 +851,8 @@ export interface StoryboardFrameInput {
   durationSeconds: number;
   /** Subject keywords, used to pick a silhouette (tower, skyline, figure…). */
   keywords: string[];
+  /** Subject is a person (draw a figure even for unlisted nouns like "barista"). */
+  isPerson?: boolean;
   footer?: string;
 }
 
@@ -901,7 +903,7 @@ export function storyboardFrameSvg(f: StoryboardFrameInput, width: number, heigh
     `<radialGradient id="key-${uid}" cx="0.72" cy="0.28" r="0.55"><stop offset="0" stop-color="${light}" stop-opacity="0.35"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient>`;
 
   const scale = framingScale(f.framing);
-  const sil = silhouetteFor([...f.keywords, f.action]);
+  const sil = f.isPerson && ["orb", "vehicle"].includes(silhouetteFor([...f.keywords, f.action])) ? "figure" : silhouetteFor([...f.keywords, f.action]);
   const sx = positionX(f.subjectPosition, W);
   const horizon = H * (scale > 1.5 ? 0.8 : 0.64);
   const ink = mix(dark, "#000000", 0.55);
