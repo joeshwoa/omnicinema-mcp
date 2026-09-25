@@ -48,7 +48,7 @@ export function getOrCreateToken(): string {
 export function buildSchema(): Record<string, unknown> {
   return {
     name: "omnicinema-mcp",
-    version: "0.2.0",
+    version: "0.3.0",
     description: "Programmatic asset-creation API. Authenticate with 'Authorization: Bearer <token>'.",
     auth: { type: "bearer", header: "Authorization" },
     personas: PERSONAS.map((p) => ({ id: p.id, title: p.title, leads: p.leads, advises: p.advises })),
@@ -128,7 +128,7 @@ export class CinemaIpcServer {
       const route = `${req.method} ${url.pathname}`;
 
       if (route === "GET /health") {
-        return json(res, 200, { ok: true, name: "omnicinema-mcp", version: "0.2.0", uptime: process.uptime() });
+        return json(res, 200, { ok: true, name: "omnicinema-mcp", version: "0.3.0", uptime: process.uptime() });
       }
 
       if (!this.authed(req)) {

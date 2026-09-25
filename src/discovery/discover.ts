@@ -13,6 +13,7 @@
  * deliberate safety boundary that replaces an autonomous auto-integrating daemon.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { paths } from "../config.js";
 import { getJson, USER_AGENT } from "../http.js";
 import { log } from "../logger.js";
@@ -47,6 +48,7 @@ function readSuggestions(): SuggestionsFile {
 
 function writeSuggestions(file: SuggestionsFile): void {
   file.updatedAt = new Date().toISOString();
+  fs.mkdirSync(path.dirname(paths.discoverySuggestions), { recursive: true });
   fs.writeFileSync(paths.discoverySuggestions, JSON.stringify(file, null, 2), "utf8");
 }
 
