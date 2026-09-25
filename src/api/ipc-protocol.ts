@@ -60,6 +60,7 @@ export function buildSchema(): Record<string, unknown> {
       { method: "GET", path: "/limits", auth: true, returns: "per-provider free-tier usage" },
       { method: "POST", path: "/consult", auth: true, body: { assetKind: "AssetKind", subject: "string", style: "string?" }, returns: "compiled PromptBrief (no generation)" },
       { method: "POST", path: "/assets/image", auth: true, body: { assetKind: "cinematic-photo|logo|vector-art|texture|ui-mockup", subject: "string", style: "string?", generative: "boolean?", approveOverBudget: "boolean?" }, returns: "GeneratedAsset | BudgetHalt(402)" },
+      { method: "POST", path: "/generate", auth: true, body: { type: "image|texture|audio", prompt: "string", style: "string?", assetKind: "AssetKind? (overrides the type mapping)", audioType: "soundtrack|voiceover|sfx?" }, returns: "the asset BYTES with its content-type (PNG preferred for images), provenance in x-omnicinema-* headers; 402 BudgetHalt; 501 for video" },
       { method: "POST", path: "/assets/audio", auth: true, body: { type: "voiceover|soundtrack|sfx", subject: "string", script: "string?", style: "string?", generative: "boolean?", approveOverBudget: "boolean?" }, returns: "GeneratedAsset | BudgetHalt(402)" },
     ],
     budget: { note: "Requests that would exceed a free quota return HTTP 402 with a breakdown; retry with approveOverBudget:true to proceed." },
@@ -148,6 +149,7 @@ export class CinemaIpcServer {
         if (url.pathname === "/consult") return this.consult(res, body);
         if (url.pathname === "/assets/image") return this.image(res, body);
         if (url.pathname === "/assets/audio") return this.audio(res, body);
+        if (url.pathname === "/generate") return this.generate(res, body);
       }
 
       return json(res, 404, { error: "not found", route });
@@ -194,6 +196,60 @@ export class CinemaIpcServer {
       : await generateSoundtrack(input);
     if (isHalt(result)) return json(res, 402, result);
     json(res, 200, result);
+  }
+
+  /**
+   * Bridge endpoint for companion tools (devuniverse-mcp's generate_media_asset):
+   * {type, prompt} in, the asset BYTES out, so the caller never needs access
+   * to this engine's output folder. image -> offline vector art (or a photo
+   * when generative:true and an image API is configured), texture -> texture,
+   * audio -> soundtrack/voiceover/sfx. Video is not served here (use
+   * run_cinema_pipeline) — answers 501 rather than pretending.
+   */
+  private async generate(res: http.ServerResponse, body: Record<string, unknown>): Promise<void> {
+    const type = String(body.type ?? "");
+    const prompt = String(body.prompt ?? body.subject ?? "").trim();
+    if (!prompt) return json(res, 400, { error: "prompt is required" });
+    if (type === "video") {
+      return json(res, 501, { error: "video is not served over IPC — run the run_cinema_pipeline tool and copy the MP4" });
+    }
+    const style = body.style ? String(body.style) : undefined;
+    const generative = Boolean(body.generative);
+    const approveOverBudget = Boolean(body.approveOverBudget);
+    let result;
+    if (type === "audio") {
+      const audioType = String(body.audioType ?? "soundtrack");
+      const input = {
+        assetKind: (audioType === "voiceover" ? "voiceover" : audioType === "sfx" ? "sfx" : "soundtrack") as AssetKind,
+        subject: prompt, style, generative, approveOverBudget,
+      };
+      result = audioType === "voiceover" ? await generateVoiceover(input)
+        : audioType === "sfx" ? await generateSfx(input) : await generateSoundtrack(input);
+    } else if (type === "image" || type === "texture") {
+      const assetKind = (body.assetKind as AssetKind | undefined)
+        ?? (type === "texture" ? "texture" : generative ? "cinematic-photo" : "vector-art");
+      result = await generateImageAsset({ assetKind, subject: prompt, style, generative, approveOverBudget });
+    } else {
+      return json(res, 400, { error: "type must be image, texture, audio or video" });
+    }
+    if (isHalt(result)) return json(res, 402, result);
+    const pngPath = (result.meta as { pngPath?: string } | undefined)?.pngPath;
+    const file = pngPath && fs.existsSync(pngPath) ? pngPath : result.path;
+    const ext = file.split(".").pop()?.toLowerCase() ?? "";
+    const mime: Record<string, string> = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", svg: "image/svg+xml",
+      wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", mid: "audio/midi",
+    };
+    const bytes = fs.readFileSync(file);
+    res.writeHead(200, {
+      "content-type": mime[ext] ?? "application/octet-stream",
+      "content-length": bytes.length,
+      "x-omnicinema-kind": result.kind,
+      "x-omnicinema-provider": result.provider,
+      "x-omnicinema-source": result.source,
+      "x-omnicinema-license": encodeURIComponent(result.license),
+    });
+    res.end(bytes);
   }
 }
 
