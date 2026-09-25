@@ -105,7 +105,7 @@ Every tool's text output ends with the **files it wrote** and **next steps**; a 
 | `list_providers` | See which providers are configured. | None |
 | `install_dependencies` | Preview (`consent:false`) or run (`consent:true`) ffmpeg/Blender/Remotion installs. | Installs only with consent |
 | `discover_providers` / `approve_suggestion` | Queue candidate providers for review / catalogue one (added disabled). | Public catalog search |
-| `ipc_start` / `ipc_status` / `ipc_stop` | Local REST API for other tools. | Localhost only |
+| `ipc_start` / `ipc_status` / `ipc_stop` | Local REST API for other tools (for a long-running service use `npm run ipc`; devuniverse-mcp fetches assets from its `POST /generate`). | Localhost only |
 
 ### Typical flow
 

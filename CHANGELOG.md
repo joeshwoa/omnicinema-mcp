@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.0] — 2026-09-25
 
+### Added
+- `POST /generate` on the IPC API (asset bytes for companion tools such as devuniverse-mcp's
+  `generate_media_asset`) and `npm run ipc` to run the IPC API as a standalone service.
+
 ### Fixed
 - **Fresh clones did not build.** A bare `assets/` rule in `.gitignore` also matched
   `src/assets/`, so the SVG designer and stock clients were never committed. The rule is
