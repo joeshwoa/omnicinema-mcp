@@ -42,13 +42,34 @@ test("genre routing selects the right tempo/key", async () => {
   assert.equal(arr.bpm, 88);
 });
 
-test("offline voiceover returns a valid WAV with a positive duration", async () => {
+test("offline voiceover is real speech via system TTS, or an honestly-labelled tone", async () => {
   const r = await generateVoiceover({ assetKind: "voiceover", subject: "In a world of silence, one signal remained.", style: "dramatic", outDir: tmp });
   assert.ok(!isHalt(r));
   if (isHalt(r)) return;
-  assert.equal(r.provider, "offline-tone");
   assert.ok((r.durationMs ?? 0) > 0);
   assert.ok(readWavInfo(r.path), "valid WAV");
+  if (r.provider === "offline-tone") {
+    assert.ok(r.warnings.some((w) => /NOT SPEECH/.test(w)), "tone fallback must say it is not speech");
+  } else {
+    assert.match(r.provider, /^system-tts:/);
+    assert.ok(r.warnings.some((w) => /synthetic/i.test(w)), "system TTS is labelled as synthetic");
+  }
+});
+
+test("CINEMA_TTS=off forces the labelled tone placeholder", async () => {
+  const { resetTtsCache } = await import("../src/audio/tts.js");
+  process.env.CINEMA_TTS = "off";
+  resetTtsCache();
+  try {
+    const r = await generateVoiceover({ assetKind: "voiceover", subject: "Testing the fallback path.", outDir: tmp });
+    assert.ok(!isHalt(r));
+    if (isHalt(r)) return;
+    assert.equal(r.provider, "offline-tone");
+    assert.ok(r.warnings.some((w) => /NOT SPEECH/.test(w)));
+  } finally {
+    delete process.env.CINEMA_TTS;
+    resetTtsCache();
+  }
 });
 
 test("estimateSpeechMs scales with words and pacing", () => {

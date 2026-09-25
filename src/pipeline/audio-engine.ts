@@ -16,13 +16,15 @@ import { ensureDirs, paths } from "../config.js";
 import { log } from "../logger.js";
 import { run, which } from "../exec.js";
 import { consult } from "../personas/consultation.js";
-import { planMusic } from "../personas/music-producer.js";
+import { fitArrangementToDuration, planMusic } from "../personas/music-producer.js";
 import type { ConsultationInput, MusicArrangement, PromptBrief } from "../personas/types.js";
 import { breakdownLines, consume } from "../limits/limit-manager.js";
 import { hfTts, MUSIC_PROVIDERS, freesound } from "../providers/audio.js";
 import { renderArrangementToWav } from "../audio/synth.js";
 import { writeArrangementMidi } from "../audio/midi.js";
 import { readWavInfo, writeWavPcm16, type WavInfo } from "../audio/wav.js";
+import { speakToWav } from "../audio/tts.js";
+import { renderSfx } from "../audio/sfx.js";
 import type { BudgetHalt, EngineResult, GeneratedAsset } from "./asset-results.js";
 
 export interface AudioEngineInput extends ConsultationInput {
@@ -31,6 +33,8 @@ export interface AudioEngineInput extends ConsultationInput {
   generative?: boolean;
   approveOverBudget?: boolean;
   outDir?: string;
+  /** Soundtrack only: re-flow the arrangement to last about this long (ms). */
+  targetDurationMs?: number;
 }
 
 // ── Voiceover ────────────────────────────────────────────────────────────────
@@ -57,12 +61,23 @@ export async function generateVoiceover(input: AudioEngineInput): Promise<Engine
     }
     warnings.push(`${hfTts.slug}: ${res.note ?? "failed"}`);
   } else if (input.generative) {
-    warnings.push("Generative TTS requested but HF_TTS_MODEL not configured; using local placeholder.");
+    warnings.push("Generative TTS requested but HUGGINGFACE_API_TOKEN + HF_TTS_MODEL are not configured; using offline system TTS.");
   }
 
   const dest = path.join(outDir, `${base}.wav`);
+  // Offline speech via a system TTS engine (say / pico2wave / flite / espeak-ng).
+  const deep = /dramatic|trailer|cinematic|epic|deep/i.test(input.style ?? "");
+  const spoken = await speakToWav(script, dest, { wpm, deep });
+  if (spoken.ok) {
+    const durationMs = (await measureDurationMs(dest)) ?? estMs;
+    warnings.push(`Spoken offline by the system TTS engine "${spoken.engine}" — intelligible but synthetic-sounding. For a natural voice set HUGGINGFACE_API_TOKEN + HF_TTS_MODEL and use generative:true.`);
+    return audioAsset({ kind: "voiceover", dest, outDir, format: "wav", provider: `system-tts:${spoken.engine}`, source: "offline", license: "Generated locally (engine license applies)", attribution: `Offline TTS (${spoken.engine})`, brief, durationMs, warnings, meta: { script, engine: spoken.engine, loudnessNormalized: spoken.normalized, targetLufs: -16 } });
+  }
+
+  // Last resort: a paced tone bed so timing still works — NOT speech.
   const info = writeTonePlaceholder(estMs, dest);
-  return audioAsset({ kind: "voiceover", dest, outDir, format: "wav", provider: "offline-tone", source: "offline", license: "n/a (placeholder)", attribution: "offline narration placeholder", brief, durationMs: info.durationMs, warnings, meta: { script, estimatedFrom: `${wpm}wpm` } });
+  warnings.push(`NOT SPEECH: no offline TTS engine was found (${spoken.note ?? "unknown"}), so this is a timing placeholder tone of the estimated narration length. Install espeak-ng (or use macOS 'say'), or configure HF_TTS_MODEL + generative:true.`);
+  return audioAsset({ kind: "voiceover", dest, outDir, format: "wav", provider: "offline-tone", source: "offline", license: "n/a (placeholder)", attribution: "offline narration placeholder (tone, not speech)", brief, durationMs: info.durationMs, warnings, meta: { script, estimatedFrom: `${wpm}wpm` } });
 }
 
 // ── Soundtrack / music ───────────────────────────────────────────────────────
@@ -72,7 +87,8 @@ export async function generateSoundtrack(input: AudioEngineInput): Promise<Engin
   const brief = consult({ ...input, assetKind: "soundtrack" });
   const outDir = input.outDir || paths.assets;
   const base = `${slug(input.subject)}_${slug(String(brief.params.arrangement && (brief.params.arrangement as MusicArrangement).genre) || "score")}`;
-  const arrangement = (brief.params.arrangement as MusicArrangement | undefined) ?? planMusic({ ...input, assetKind: "soundtrack" });
+  const planned = (brief.params.arrangement as MusicArrangement | undefined) ?? planMusic({ ...input, assetKind: "soundtrack" });
+  const arrangement = input.targetDurationMs && input.targetDurationMs > 0 ? fitArrangementToDuration(planned, input.targetDurationMs) : planned;
   const exactMs = Math.round((totalBars(arrangement) * 4 * 60_000) / arrangement.bpm);
   const warnings: string[] = [];
 
@@ -123,11 +139,13 @@ export async function generateSfx(input: AudioEngineInput): Promise<EngineResult
       return audioAsset({ kind: "sfx", dest, outDir, format: "mp3", provider: res.provider, source: "generative", license: res.license, attribution: res.attribution, brief, durationMs, warnings });
     }
     warnings.push(`freesound: ${res.note ?? "failed"}`);
+  } else if (input.generative) {
+    warnings.push("Generative SFX requested but FREESOUND_API_KEY is not set; using offline synthesis.");
   }
 
   const dest = path.join(outDir, `${base}.wav`);
-  const info = writeSfxPlaceholder(dest);
-  return audioAsset({ kind: "sfx", dest, outDir, format: "wav", provider: "offline-synth", source: "offline", license: "MIT (generated by this tool)", attribution: "offline sfx", brief, durationMs: info.durationMs, warnings });
+  const { info, recipe } = renderSfx(input.subject, dest);
+  return audioAsset({ kind: "sfx", dest, outDir, format: "wav", provider: "offline-synth", source: "offline", license: "MIT (generated by this tool)", attribution: `offline procedural sfx (${recipe})`, brief, durationMs: info.durationMs, warnings, meta: { recipe } });
 }
 
 // ── shared ───────────────────────────────────────────────────────────────────
@@ -170,19 +188,6 @@ function writeTonePlaceholder(durationMs: number, dest: string, sampleRate = 240
   return writeWavPcm16(dest, buf, sampleRate);
 }
 
-function writeSfxPlaceholder(dest: string, sampleRate = 44100): WavInfo {
-  const durS = 0.4;
-  const n = Math.round(durS * sampleRate);
-  const buf = new Float32Array(n);
-  let s = 0x1234abcd;
-  for (let i = 0; i < n; i++) {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    const noise = (s / 4294967296) * 2 - 1;
-    const env = Math.exp((-i / sampleRate) * 12);
-    buf[i] = noise * 0.5 * env + Math.sin((2 * Math.PI * 180 * i) / sampleRate) * 0.2 * env;
-  }
-  return writeWavPcm16(dest, buf, sampleRate);
-}
 
 function halt(gate: { decision: import("../limits/limit-manager.js").BudgetDecision }, brief: PromptBrief): BudgetHalt {
   log.warn(`Audio budget gate halted: ${gate.decision.message}`);

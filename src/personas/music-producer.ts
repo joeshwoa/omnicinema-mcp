@@ -167,3 +167,33 @@ export const musicProducer: Persona = {
     };
   },
 };
+
+/**
+ * Re-flow an arrangement's structure so it lasts ~`targetMs` (rounded UP to
+ * whole bars, so the music never ends before the picture). Keeps the intro and
+ * outro, scales the body sections proportionally, and drops body sections when
+ * the target is very short.
+ */
+export function fitArrangementToDuration(arr: MusicArrangement, targetMs: number): MusicArrangement {
+  const barMs = (4 * 60_000) / arr.bpm;
+  const need = Math.max(2, Math.ceil(targetMs / barMs));
+  const src = arr.structure;
+  const total = src.reduce((n, s) => n + s.bars, 0);
+  let sections = src.map((s) => ({ ...s }));
+  // Too short for every section: keep intro, the strongest section, and outro.
+  if (need < sections.length * 2) {
+    const peak = sections.find((s) => s.name === "chorus" || s.name === "drop") ?? sections[Math.floor(sections.length / 2)]!;
+    sections = [sections[0]!, { ...peak }, sections[sections.length - 1]!].filter((s, i, a) => a.indexOf(s) === i);
+  }
+  const base = sections.reduce((n, s) => n + s.bars, 0) || total;
+  let bars = sections.map((s) => Math.max(1, Math.round((s.bars / base) * need)));
+  let diff = need - bars.reduce((a, b) => a + b, 0);
+  // Adjust the longest body section until the sum is exact.
+  while (diff !== 0) {
+    const order = bars.map((b, i) => [b, i] as const).filter(([, i]) => i !== 0 && i !== bars.length - 1 || bars.length <= 2).sort((a, b) => b[0] - a[0]);
+    const i = order[0]?.[1] ?? 0;
+    if (diff > 0) { bars[i]! += 1; diff--; } else if (bars[i]! > 1) { bars[i]! -= 1; diff++; } else break;
+  }
+  bars = bars.map((b) => Math.max(1, b));
+  return { ...arr, structure: sections.map((s, i) => ({ name: s.name, bars: bars[i]! })) };
+}

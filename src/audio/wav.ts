@@ -54,6 +54,37 @@ export function writeWavPcm16(dest: string, samples: Float32Array, sampleRate: n
   };
 }
 
+/** Write a stereo PCM16 WAV from two Float32 channels (values in [-1, 1]). */
+export function writeWavStereoPcm16(dest: string, left: Float32Array, right: Float32Array, sampleRate: number): WavInfo {
+  const channels = 2;
+  const bitsPerSample = 16;
+  const frames = Math.min(left.length, right.length);
+  const dataSize = frames * channels * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write("RIFF", 0, "ascii");
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8, "ascii");
+  buffer.write("fmt ", 12, "ascii");
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(channels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * channels * 2, 28);
+  buffer.writeUInt16LE(channels * 2, 32);
+  buffer.writeUInt16LE(bitsPerSample, 34);
+  buffer.write("data", 36, "ascii");
+  buffer.writeUInt32LE(dataSize, 40);
+  let offset = 44;
+  for (let i = 0; i < frames; i++) {
+    buffer.writeInt16LE(Math.round(Math.max(-1, Math.min(1, left[i]!)) * 32767), offset);
+    buffer.writeInt16LE(Math.round(Math.max(-1, Math.min(1, right[i]!)) * 32767), offset + 2);
+    offset += 4;
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, buffer);
+  return { durationMs: Math.round((frames / sampleRate) * 1000), sampleRate, channels, bitsPerSample };
+}
+
 /** Read a WAV file's fmt + data chunks and compute its precise duration. */
 export function readWavInfo(filePath: string): WavInfo | null {
   const buf = fs.readFileSync(filePath);
