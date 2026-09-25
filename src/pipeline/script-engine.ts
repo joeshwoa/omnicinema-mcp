@@ -152,6 +152,12 @@ function stripDet(words: string[]): string[] {
 export function parseConcept(prompt: string): Concept {
   const clean = prompt.replace(LEADING_FILLER, "").replace(/[^A-Za-z0-9\s'-]/g, " ").replace(/\s+/g, " ").trim();
   const words = clean.toLowerCase().split(" ").filter(Boolean);
+  // Proper nouns keep their casing ("Cairo"): a capitalised word that is not
+  // the first word of the prompt.
+  const proper = new Map<string, string>();
+  clean.split(" ").filter(Boolean).forEach((w, k) => {
+    if (k > 0 && /^[A-Z][a-z]/.test(w)) proper.set(w.toLowerCase(), w);
+  });
   const body = stripDet(words);
 
   let i = 0;
@@ -208,11 +214,12 @@ export function parseConcept(prompt: string): Concept {
   const place = subjectWords.slice(0, -1).find((w) => PLACES.has(w)) ?? (PLACES.has(head) ? head : "");
   const settingHead = setting[setting.length - 1] ?? "";
   const isPerson = PERSON.has(head) || (/(?:er|or|ist|ian)$/.test(head) && !/(?:water|river|tower|center|centre|computer|flower|paper|poster|monitor|mirror|corridor|harbor|harbour|motor|tractor|container|thunder|winter|summer|shelter|river)$/.test(head));
+  const cased = (ws: string[]): string => ws.map((w) => proper.get(w) ?? w).join(" ");
   return {
     subject: subjectWords.join(" "),
     head,
-    action,
-    setting: setting.join(" "),
+    action: cased(action.split(" ")),
+    setting: cased(setting),
     settingHead,
     element: element && element !== head ? element : "",
     place: place === head && !isPerson ? head : place,
@@ -465,7 +472,8 @@ export function buildScreenplay(opts: ScriptOptions): Screenplay {
     S: `the ${subjectPhrase}`,
     H: concept.head,
     A: concept.action,
-    SET: settingPhrase.startsWith("the ") ? settingPhrase : `the ${settingPhrase}`,
+    // A proper-noun setting takes no article ("Cairo", not "the Cairo").
+    SET: settingPhrase.startsWith("the ") || /^[A-Z]/.test(settingPhrase) ? settingPhrase : `the ${settingPhrase}`,
     EL: `the ${elementWord}`,
     detail: (r) => concept.isPerson ? pick(["eyes", "hands", "face", "profile"], r) : pick(["silhouette", "surface", "outline", "details"], r),
   };

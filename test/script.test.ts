@@ -85,7 +85,14 @@ test("asset queries are short and specific", () => {
 test("setting stops at the next verb: a location mid-sentence is not swallowed", () => {
   const c = parseConcept("a street food vendor in Cairo opening his cart at dawn");
   assert.equal(c.subject, "street food vendor");
-  assert.equal(c.setting, "cairo");
+  assert.equal(c.setting, "Cairo", "proper noun keeps its casing");
   const sp = buildScreenplay({ prompt: "a street food vendor in Cairo opening his cart at dawn", sceneCount: 3 });
   for (const sc of sp.scenes) assert.doesNotMatch(sc.heading, /OPENING HIS CART/, sc.heading);
+});
+
+test("proper-noun settings read naturally in shot lines", () => {
+  const sp = buildScreenplay({ prompt: "a street food vendor in Cairo opening his cart at dawn", sceneCount: 3 });
+  const text = sp.scenes.flatMap((s) => s.shots.map((x) => x.action)).join(" ");
+  assert.match(text, /Cairo/, "the setting appears in the shot lines");
+  assert.doesNotMatch(text, /the cairo/i);
 });
