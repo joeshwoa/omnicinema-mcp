@@ -4,6 +4,45 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-09-25
+
+### Fixed
+- **Fresh clones did not build.** A bare `assets/` rule in `.gitignore` also matched
+  `src/assets/`, so the SVG designer and stock clients were never committed. The rule is
+  anchored to the repo root and the modules are restored (`src/assets/`).
+- **Every Remotion render produced the 3-second demo placeholder**: the composition reads
+  `props.timeline` but was given the raw timeline. Renders now use the real timeline.
+- `npm run setup:render` rewrote `package.json`; it now installs the pinned optional deps.
+- Generative video in `run_cinema_pipeline` bypassed the budget guard; it is now gated.
+- The test suite deleted the real `data/usage-limits.json`; tests now run in a temp root.
+- Discovery failed when `data/` did not exist; `projectId` is validated (no path traversal).
+
+### Added
+- Offline SVG designer: logos (emblem / monogram / wordmark / horizontal, keyword-matched
+  marks, reversed + icon variants), layered vector art (7 templates), device-framed UI
+  mockups (dashboard, landing, sign-in, store, chat, mobile), labelled photo placeholders,
+  storyboard frames; PNG export when `rsvg-convert` or ffmpeg+librsvg is available.
+- Stock clients for Pexels, Pixabay and Unsplash (official APIs, license + attribution,
+  Unsplash download tracking) and a stock manager with ranking, dedupe and budget gating.
+- `run_cinema_pipeline` `dry_run` (plan + cost estimate, no side effects), `stock`,
+  `captions`, `approveOverBudget`; `generate_soundtrack` `durationSeconds`.
+- ffmpeg render fallback when Remotion is not installed.
+- Offline narration via system TTS (say / pico2wave / ffmpeg flite / espeak-ng), normalized
+  to -16 LUFS; 13 procedural SFX recipes.
+- 47 new tests (76 total), including an offline end-to-end render.
+
+### Changed
+- Screenplay engine rewritten: parsed subject/action/setting, one lighting look per film,
+  story arc, film-grammar shot progression, camera moves derived from framing changes,
+  180° rule, real INT/EXT locations, short stock queries.
+- Music engine: composed score (voice-led chords, genre bass/drums, melody, section
+  dynamics) rendered in stereo with genre instruments, reverb, sidechain, and mastering to
+  about -14 LUFS; Type-1 multi-track MIDI of the same score; arrangements fit a target length.
+- Edit: hard cuts inside scenes, true crossfades between scenes, Ken Burns motion, title
+  card, captions, soundtrack trimmed/faded/ducked under narration, fade out.
+- Tool descriptions say when to use each tool and which flags use the network or money;
+  every result ends with output files and next steps.
+
 ## [0.2.0] — 2026-07-07
 
 Expanded the initial local video pipeline into a master asset-creation engine
@@ -65,4 +104,6 @@ Expanded the initial local video pipeline into a master asset-creation engine
   scraping of generative web UIs / paywall circumvention, and no auto-integration
   of untrusted endpoints or code.
 
-[0.1.0]: https://github.com/
+[0.3.0]: https://github.com/joeshwoa/omnicinema-mcp
+[0.2.0]: https://github.com/joeshwoa/omnicinema-mcp
+[0.1.0]: https://github.com/joeshwoa/omnicinema-mcp

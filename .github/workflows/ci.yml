@@ -27,8 +27,13 @@ jobs:
       - name: Install (core, no optional Remotion)
         run: npm ci --omit=optional --no-audit --no-fund
 
+      # Optional system tools: with these, the end-to-end test renders a real MP4
+      # (ffmpeg), SVGs are render-checked (librsvg), and narration is spoken (espeak-ng).
+      - name: Install media tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin espeak-ng
+
       - name: Build
         run: npm run build
 
-      - name: Eval (offline: continuity + timeline tiling + no missing assets)
-        run: npm run eval
+      - name: Test (offline)
+        run: npm test
