@@ -17,7 +17,9 @@ import path from "node:path";
 
 import { buildScreenplay, verifyContinuity } from "../src/pipeline/script-engine.js";
 import { buildTimeline, validateTimeline } from "../src/montage/timeline.js";
-import { runCinemaPipeline } from "../src/pipeline/runCinemaPipeline.js";
+import { planCinemaPipeline, runCinemaPipeline } from "../src/pipeline/runCinemaPipeline.js";
+import { renderCapability } from "../src/montage/render.js";
+import { spawnSync } from "node:child_process";
 import type { AssetClip, Timeline } from "../src/types.js";
 
 const BASE = {
@@ -172,4 +174,46 @@ test("optional narration + soundtrack lock audio tracks to the timeline", async 
   };
   assert.ok(timeline.audioTracks && timeline.audioTracks.length === 2, "timeline carries audio tracks");
   assert.ok(timeline.audioTracks!.every((t) => t.durationInFrames > 0), "audio tracks have frame durations");
+});
+
+test("planCinemaPipeline (dry run) previews shots, providers and spend without side effects", async () => {
+  const plan = await planCinemaPipeline({ prompt: BASE.prompt, workflow_mode: "fully_automated", sceneCount: 3, shotsPerScene: 2, narration: "Hello.", soundtrack: true });
+  assert.equal(plan.dryRun, true);
+  assert.equal(plan.scenes.length, 3);
+  assert.equal(plan.scenes.flatMap((s) => s.shots).length, 6);
+  assert.deepEqual(plan.assets.stockProviders, [], "no keys in tests");
+  assert.match(plan.network.join(" "), /fully offline/);
+  assert.match(plan.spend.join(" "), /Nothing/);
+  assert.ok(plan.nextSteps.length > 0);
+});
+
+test("offline end-to-end: narration + soundtrack + render to a real MP4 (skips without ffmpeg/Remotion)", async (t) => {
+  // Prefer the fast ffmpeg engine in CI; set OMNICINEMA_TEST_REMOTION=1 to exercise Remotion instead.
+  if (!process.env.OMNICINEMA_TEST_REMOTION) process.env.CINEMA_DISABLE_REMOTION = "1";
+  const engine = await renderCapability();
+  if (!engine) return t.skip("no render engine (install ffmpeg or run npm run setup:render)");
+  const report = await runCinemaPipeline({
+    prompt: BASE.prompt,
+    workflow_mode: "fully_automated",
+    sceneCount: 2,
+    shotsPerScene: 2,
+    shotDurationSeconds: 2,
+    fps: 12,
+    width: 320,
+    height: 180,
+    enrich: false,
+    narration: "The light held. The storm passed.",
+    soundtrack: true,
+    musicStyle: "ambient",
+  });
+  delete process.env.CINEMA_DISABLE_REMOTION;
+  assert.ok(report.renderedVideoPath, `rendered: ${report.warnings.join(" | ")}`);
+  assert.ok(fs.existsSync(report.renderedVideoPath!));
+  const probe = spawnSync("ffprobe", ["-v", "error", "-show_entries", "stream=codec_type,width,height:format=duration", "-of", "compact", report.renderedVideoPath!]).stdout.toString();
+  assert.match(probe, /codec_type=video\|width=320\|height=180/);
+  assert.match(probe, /codec_type=audio/);
+  const dur = Number(/duration=([\d.]+)/.exec(probe)![1]);
+  assert.ok(Math.abs(dur - report.durationSeconds!) < 0.25, `duration ${dur} vs ${report.durationSeconds}`);
+  const timeline = JSON.parse(fs.readFileSync(report.timelinePath, "utf8")) as Timeline;
+  assert.ok(timeline.captions && timeline.captions.length >= 2, "narration captions present");
 });

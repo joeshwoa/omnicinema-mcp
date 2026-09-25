@@ -103,6 +103,16 @@ export interface TimelineItem {
   kind: "video" | "image" | "placeholder";
   /** Crossfade length in frames applied at the head of this item (0 = hard cut). */
   transitionInFrames: number;
+  /** Ken Burns-style motion for stills, derived from the shot's camera move. */
+  motion?: "push-in" | "pull-out" | "pan-left" | "pan-right" | "rise" | "handheld" | "static";
+  /** Scene index (0-based); transitions are placed at scene boundaries. */
+  sceneIndex?: number;
+}
+
+export interface Caption {
+  text: string;
+  startFrame: number;
+  durationInFrames: number;
 }
 
 export interface AudioTrack {
@@ -116,6 +126,11 @@ export interface AudioTrack {
   durationMs: number;
   /** Linear volume 0..1 (soundtracks are ducked under narration). */
   volume: number;
+  fadeInFrames?: number;
+  fadeOutFrames?: number;
+  /** Lower this track (by `duckTo`) while any voiceover is playing. */
+  duckUnderVoiceover?: boolean;
+  duckTo?: number;
 }
 
 export interface Timeline {
@@ -126,6 +141,12 @@ export interface Timeline {
   items: TimelineItem[];
   /** Optional audio tracks locked to the video by frame position. */
   audioTracks?: AudioTrack[];
+  /** Burned-in captions (from the narration script). */
+  captions?: Caption[];
+  /** Opening title overlay. */
+  titleCard?: { title: string; subtitle?: string; durationInFrames: number };
+  /** Fade to black over the final N frames. */
+  fadeOutFrames?: number;
 }
 
 export type WorkflowMode = "fully_automated" | "interactive_montage";
@@ -151,4 +172,8 @@ export interface PipelineReport {
   warnings: string[];
   nextSteps: string[];
   paused: boolean;
+  /** Final picture length in seconds. */
+  durationSeconds?: number;
+  /** Which engine rendered the MP4 ("remotion" | "ffmpeg"). */
+  renderEngine?: string;
 }
