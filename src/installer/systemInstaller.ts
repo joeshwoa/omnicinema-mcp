@@ -84,12 +84,14 @@ export function planInstall(system: DetectedSystem, targets: Target[]): PlannedS
   const steps: PlannedStep[] = [];
   for (const target of targets) {
     if (target === "remotion") {
-      if (!fs.existsSync(path.join(paths.repoRoot, "node_modules", "remotion"))) {
+      if (!fs.existsSync(path.join(paths.repoRoot, "node_modules", "remotion")) || !fs.existsSync(path.join(paths.repoRoot, "node_modules", "@remotion", "cli"))) {
         steps.push({
           target,
           reason: "Remotion + React render toolchain (optional dependencies).",
           cmd: "npm",
-          args: ["install", "--include=optional", "remotion", "react", "react-dom", "@remotion/cli", "@remotion/bundler", "@remotion/renderer"],
+          // Installs the optionalDependencies pinned in package.json/lockfile
+          // without rewriting package.json.
+          args: ["install", "--include=optional", "--no-audit", "--no-fund"],
         });
       }
       continue;

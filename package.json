@@ -1,7 +1,7 @@
 {
   "name": "omnicinema-mcp",
   "version": "0.3.0",
-  "description": "A local Model Context Protocol (MCP) server: a master asset-creation engine with a multi-agent persona consultation framework, image/vector design, voiceover + full music/genre synthesis, a video pipeline (screenplay continuity + Remotion montage), a free-tier budget guard, a localhost inter-tool REST API, and human-in-the-loop provider discovery \u2014 all via official APIs with your own keys.",
+  "description": "A local Model Context Protocol (MCP) server: a master asset-creation engine with a multi-agent persona consultation framework, image/vector design, voiceover + full music/genre synthesis, a video pipeline (screenplay continuity + Remotion montage), a free-tier budget guard, a localhost inter-tool REST API, and human-in-the-loop provider discovery — all via official APIs with your own keys.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -27,7 +27,7 @@
     "dev": "tsx src/index.ts",
     "test": "tsx --import ./test/_setup.ts --test test/*.test.ts",
     "eval": "npm test",
-    "setup:render": "npm install --include=optional remotion react react-dom @remotion/cli @remotion/bundler @remotion/renderer",
+    "setup:render": "npm install --include=optional --no-audit --no-fund",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"
   },

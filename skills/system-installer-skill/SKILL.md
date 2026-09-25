@@ -27,7 +27,7 @@ human-facing counterpart to the server's `install_dependencies` tool.
    - **macOS:** `brew install ffmpeg`, `brew install --cask blender`
    - **Linux:** `sudo apt-get install -y ffmpeg blender` (or `dnf`)
    - **Windows:** `winget install -e --id Gyan.FFmpeg`, `winget install -e --id BlenderFoundation.Blender`
-   - **All:** `npm install --include=optional remotion react react-dom @remotion/cli @remotion/bundler @remotion/renderer`
+   - **All:** `npm install --include=optional --no-audit --no-fund` (the Remotion toolchain is declared in `optionalDependencies`)
 
 4. **Map caches to the external volume.** Write an `.npmrc` whose `cache=` points
    under `CINEMA_ROOT/.cache/npm`, and create `CINEMA_ROOT/.cache/remotion`, so
