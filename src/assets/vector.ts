@@ -947,36 +947,47 @@ export function storyboardFrameSvg(f: StoryboardFrameInput, width: number, heigh
       art.push(`<circle cx="${n(sx)}" cy="${n(horizon - k * 0.5)}" r="${n(k * 0.5)}" fill="${ink}"/><circle cx="${n(sx)}" cy="${n(horizon - k * 0.5)}" r="${n(k * 0.8)}" fill="none" stroke="${light}" stroke-opacity="0.25" stroke-width="${n(u * 0.004)}"/>`);
   }
 
-  const m = u * 0.05;
+  // Title-safe layout: all text sits in the TOP band inside ~9% margins, so the
+  // bottom quarter stays clear for burned-in captions and Ken Burns motion
+  // never crops a word.
+  const mx = W * 0.09;
+  const my = H * 0.08;
   const chip = u * 0.03;
   const bracket = (x: number, y: number, dx: number, dy: number) => `M${n(x)} ${n(y + dy * u * 0.05)} L${n(x)} ${n(y)} L${n(x + dx * u * 0.05)} ${n(y)}`;
-  const headSize = u * 0.052;
-  const actionSize = u * 0.034;
-  const metaSize = u * 0.026;
-  const textW = W - 2 * m - u * 0.22;
-  const action = wrapText(f.action, actionSize, textW, 2);
-  const metaY = H - m - metaSize * 0.2;
-  const actionY = metaY - metaSize * 1.9 - (action.length - 1) * actionSize * 1.25;
-  const headY = actionY - actionSize * 1.6;
-  const swatch = u * 0.035;
+  const headSize = u * 0.034;
+  const actionSize = u * 0.04;
+  const metaSize = u * 0.025;
+  const textW = W * 0.64; // leave the top-right corner for duration, swatches and footer
+  const action = wrapText(f.action, actionSize, textW, 3, true);
+  const chipY = my;
+  const headY = chipY + chip * 1.25 + headSize * 1.9;
+  const actionY = headY + actionSize * 1.45;
+  const metaY = actionY + (action.length - 1) * actionSize * 1.22 + metaSize * 2;
+  const swatch = u * 0.03;
   const text = (x: number, y: number, s: string, size: number, weight: number, fill: string, anchor = "start", extra = "") =>
     `<text x="${n(x)}" y="${n(y)}" font-family="${esc(FONT_SANS)}" font-size="${n(size)}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}"${extra}>${esc(s)}</text>`;
   const meta = `${titleCase(f.framing)} · ${f.cameraMovement} · ${f.lighting}`;
+  const metaLine = wrapText(meta, metaSize, textW, 1)[0] ?? meta;
+  const topShade = `<linearGradient id="top-${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000000" stop-opacity="0.7"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></linearGradient>`;
+  const bm = u * 0.05;
+  const chipLabel = `SHOT ${f.shotNumber}/${f.shotCount}`;
   const body = [
+    `<defs>${topShade}</defs>`,
     `<rect width="${W}" height="${H}" fill="url(#g-${uid})"/>`,
     `<rect width="${W}" height="${H}" fill="url(#key-${uid})"/>`,
     ...art,
     `<rect width="${W}" height="${H}" fill="url(#shade-${uid})"/>`,
+    `<rect width="${W}" height="${n(metaY + metaSize * 2.5)}" fill="url(#top-${uid})"/>`,
     `<g stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"><path d="M${n(W / 3)} 0 V${H} M${n((2 * W) / 3)} 0 V${H} M0 ${n(H / 3)} H${W} M0 ${n((2 * H) / 3)} H${W}"/></g>`,
-    `<path d="${bracket(m, m, 1, 1)} ${bracket(W - m, m, -1, 1)} ${bracket(m, H - m, 1, -1)} ${bracket(W - m, H - m, -1, -1)}" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="${n(Math.max(1.5, u * 0.004))}"/>`,
-    `<rect x="${n(m + u * 0.02)}" y="${n(m + u * 0.02)}" width="${n(textWidth(`SHOT ${f.shotNumber}/${f.shotCount}`, chip * 0.62, { bold: true }) + chip * 1.2)}" height="${n(chip * 1.25)}" rx="${n(chip * 0.3)}" fill="#000000" fill-opacity="0.45"/>`,
-    text(m + u * 0.02 + chip * 0.6, m + u * 0.02 + chip * 0.85, `SHOT ${f.shotNumber}/${f.shotCount}`, chip * 0.62, 700, "#ffffff", "start", ` letter-spacing="${n(chip * 0.06)}"`),
-    text(W - m - u * 0.02, m + u * 0.02 + chip * 0.85, `${f.durationSeconds.toFixed(1)}s · ${f.filmTitle.toUpperCase()}`, chip * 0.62, 600, "#ffffff", "end", ` fill-opacity="0.8" letter-spacing="${n(chip * 0.06)}"`),
-    text(m + u * 0.02, headY, f.sceneHeading.toUpperCase(), headSize * 0.62, 700, light, "start", ` letter-spacing="${n(headSize * 0.05)}"`),
-    ...action.map((l, i) => text(m + u * 0.02, actionY + i * actionSize * 1.25, l, actionSize, 600, "#ffffff")),
-    text(m + u * 0.02, metaY, meta.length > 110 ? `${meta.slice(0, 107)}…` : meta, metaSize, 400, "#ffffff", "start", ` fill-opacity="0.72"`),
-    ...colors.slice(0, 4).map((c, i) => `<rect x="${n(W - m - u * 0.02 - (colors.slice(0, 4).length - i) * (swatch + 6))}" y="${n(metaY - swatch * 0.85)}" width="${n(swatch)}" height="${n(swatch)}" rx="${n(swatch * 0.2)}" fill="${c}" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1.5"/>`),
-    f.footer ? text(W / 2, H - m * 0.35, f.footer, metaSize * 0.72, 500, "#ffffff", "middle", ` fill-opacity="0.5"`) : "",
+    `<path d="${bracket(bm, bm, 1, 1)} ${bracket(W - bm, bm, -1, 1)} ${bracket(bm, H - bm, 1, -1)} ${bracket(W - bm, H - bm, -1, -1)}" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="${n(Math.max(1.5, u * 0.004))}"/>`,
+    `<rect x="${n(mx)}" y="${n(chipY)}" width="${n(textWidth(chipLabel, chip * 0.62, { bold: true }) + chip * 1.2)}" height="${n(chip * 1.25)}" rx="${n(chip * 0.3)}" fill="${light}" fill-opacity="0.9"/>`,
+    text(mx + chip * 0.6, chipY + chip * 0.85, chipLabel, chip * 0.62, 700, mix(dark, "#000000", 0.4), "start", ` letter-spacing="${n(chip * 0.06)}"`),
+    text(W - mx, chipY + chip * 0.85, `${f.durationSeconds.toFixed(1)}s · ${f.filmTitle.toUpperCase()}`, chip * 0.62, 600, "#ffffff", "end", ` fill-opacity="0.8" letter-spacing="${n(chip * 0.06)}"`),
+    text(mx, headY, f.sceneHeading.toUpperCase(), headSize, 700, light, "start", ` letter-spacing="${n(headSize * 0.08)}"`),
+    ...action.map((l, i) => text(mx, actionY + i * actionSize * 1.22, l, actionSize, 700, "#ffffff")),
+    text(mx, metaY, metaLine, metaSize, 400, "#ffffff", "start", ` fill-opacity="0.75"`),
+    ...colors.slice(0, 4).map((c, i) => `<rect x="${n(W - mx - (colors.slice(0, 4).length - i) * (swatch + 6) + 6)}" y="${n(chipY + chip * 1.9)}" width="${n(swatch)}" height="${n(swatch)}" rx="${n(swatch * 0.2)}" fill="${c}" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1.5"/>`),
+    f.footer ? text(W - mx, chipY + chip * 1.9 + swatch + metaSize * 1.2, f.footer, metaSize * 0.72, 500, "#ffffff", "end", ` fill-opacity="0.55"`) : "",
   ];
   return svgDoc(W, H, body.filter(Boolean).join("\n"), {
     title: `${f.filmTitle} — ${f.shotId}`,

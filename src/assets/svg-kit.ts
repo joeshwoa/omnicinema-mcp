@@ -125,7 +125,10 @@ export function designPalette(input?: string[]): DesignPalette {
   // Persona palettes list the intended primary first, so keep their order for
   // brand colors; only fall back to saturation ranking when all are light.
   const ranked = brand.length ? brand : [...src].sort((a, b) => saturation(b) - saturation(a) || luminance(a) - luminance(b));
-  const mono = src.every((c) => saturation(c) < 0.12);
+  // Chroma (max-min channel spread), not HSL saturation: near-black slates like
+  // #111827 have high HSL saturation but read as neutral.
+  const chroma = (c: string) => { const x = parseHex(c)!; return (Math.max(x.r, x.g, x.b) - Math.min(x.r, x.g, x.b)) / 255; };
+  const mono = src.every((c) => chroma(c) < 0.1);
 
   // For mono palettes the darkest tone leads; otherwise the most saturated.
   const primary = mono ? [...src].sort((a, b) => luminance(a) - luminance(b))[0]! : ranked[0]!;
