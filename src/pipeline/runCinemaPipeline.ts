@@ -304,7 +304,7 @@ export async function runCinemaPipeline(input: CinemaPipelineInput): Promise<Pip
       nextSteps.push(`Not rendered (render:false). Call compile_montage with projectId="${projectId}" to render.`);
     }
   }
-  if (renderedVideoPath) nextSteps.push(`Watch ${renderedVideoPath}. To re-cut, edit montage-order.json or swap clip files in ${projectAbsDir} and call compile_montage.`);
+  if (renderedVideoPath) nextSteps.push(`Watch ${renderedVideoPath}. To re-cut, create montage-order.json (a JSON array of clip file names, in order) or swap clip files in ${projectAbsDir} and call compile_montage.`);
   if (clips.some((c) => c.source === "placeholder")) {
     nextSteps.push("Storyboard frames stand in for footage. For real b-roll set PEXELS_API_KEY (or PIXABAY_API_KEY / UNSPLASH_ACCESS_KEY) and re-run; check list_providers.");
   }
