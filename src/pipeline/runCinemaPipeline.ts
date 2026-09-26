@@ -111,7 +111,7 @@ export async function planCinemaPipeline(input: CinemaPipelineInput): Promise<Pi
     network.push(`Generative video via ${genConfigured.join(" → ")} (${shots.length} clip requests).`);
     spend.push(`Generative video: up to ${shots.length} generations on ${genConfigured[0]} (falls through to the next provider on failure). This spends your free quota or PAID credits at that provider's rates.`);
   }
-  if (input.enrich !== false && env.anthropic()) {
+  if (input.enrich === true && env.anthropic()) {
     network.push("Screenplay enrichment via the Anthropic API (1 request).");
     spend.push("Screenplay enrichment: 1 Anthropic API call (billed to ANTHROPIC_API_KEY).");
   }
@@ -146,7 +146,7 @@ export async function planCinemaPipeline(input: CinemaPipelineInput): Promise<Pi
     render: { engine, willRender: wantRender && Boolean(engine) },
     network: network.length ? network : ["None — this run is fully offline."],
     spend: spend.length ? spend : ["Nothing — no paid API is used."],
-    llmEnrichment: input.enrich !== false && Boolean(env.anthropic()),
+    llmEnrichment: input.enrich === true && Boolean(env.anthropic()),
     nextSteps,
   };
 }
@@ -168,7 +168,7 @@ export async function runCinemaPipeline(input: CinemaPipelineInput): Promise<Pip
     width,
     height,
   });
-  if (input.enrich !== false) {
+  if (input.enrich === true) {
     screenplay = await enrichScreenplay(screenplay);
   }
   const continuityBreaks = verifyContinuity(screenplay);

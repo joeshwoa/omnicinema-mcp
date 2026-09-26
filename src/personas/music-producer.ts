@@ -102,10 +102,16 @@ export function detectGenre(input: ConsultationInput): GenreProfile {
     lofi: "lo-fi", "lo-fi": "lo-fi", chill: "lo-fi", jazzy: "lo-fi",
     edm: "electronic", electronic: "electronic", house: "electronic", techno: "electronic", synth: "electronic",
   };
-  for (const [needle, genre] of Object.entries(alias)) {
-    if (hay.includes(needle)) {
-      const p = GENRES.find((g) => g.genre === genre);
-      if (p) return p;
+  // The style names the genre; the subject only as a fallback — and whole
+  // words only ("rocket launch" is not rock, "trapped" is not trap).
+  void hay;
+  for (const text of [input.style ?? "", input.subject]) {
+    const t = ` ${text.toLowerCase().replace(/[^a-z0-9-]+/g, " ")} `;
+    for (const [needle, genre] of Object.entries(alias)) {
+      if (t.includes(` ${needle} `)) {
+        const p = GENRES.find((g) => g.genre === genre);
+        if (p) return p;
+      }
     }
   }
   return DEFAULT_PROFILE;

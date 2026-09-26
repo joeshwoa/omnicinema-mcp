@@ -86,3 +86,19 @@ test("measureDurationMs reads a WAV header exactly", async () => {
   const measured = await measureDurationMs(r.path);
   assert.equal(measured, r.durationMs);
 });
+
+test("genre comes from the style first and whole words only", async () => {
+  const { detectGenre } = await import("../src/personas/music-producer.js");
+  assert.equal(detectGenre({ assetKind: "soundtrack", subject: "rocket launch countdown", style: "lo-fi" }).genre, "lo-fi");
+  assert.equal(detectGenre({ assetKind: "soundtrack", subject: "a trapped miner", style: "" }).genre, "ambient-score");
+  assert.equal(detectGenre({ assetKind: "soundtrack", subject: "night drive", style: "synth" }).genre, "electronic");
+});
+
+test("SFX: unmatched requests are flagged, not silently swapped", async () => {
+  const { matchRecipe, chooseRecipe } = await import("../src/audio/sfx.js");
+  assert.equal(matchRecipe("train horn"), undefined, "'train' must not match rain");
+  assert.equal(matchRecipe("sunrise"), undefined, "'sunrise' must not match riser");
+  assert.equal(matchRecipe("heavy rain on a roof"), "rain");
+  assert.equal(matchRecipe("soft UI click"), "click");
+  assert.equal(chooseRecipe("door knock"), "impact");
+});

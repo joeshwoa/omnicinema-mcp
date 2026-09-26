@@ -169,7 +169,7 @@ export function createServer(): McpServer {
         captions: z.boolean().optional().describe("Burn narration captions into the video (default true)."),
         soundtrack: z.boolean().optional().describe("Add an offline-synthesized soundtrack fitted to the video length, ducked under narration."),
         musicStyle: z.string().optional().describe("Soundtrack genre: 'lo-fi', 'cinematic orchestral', 'hip-hop', 'trap', 'rock', 'electronic', 'ambient'."),
-        enrich: z.boolean().optional().describe("If ANTHROPIC_API_KEY is set, polish the screenplay prose with one API call (default true when the key exists)."),
+        enrich: z.boolean().optional().describe("SPENDS MONEY: true + ANTHROPIC_API_KEY polishes the screenplay prose with one Anthropic API call. Default false (offline template prose)."),
       },
     },
     async (args) =>

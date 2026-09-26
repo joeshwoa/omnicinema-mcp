@@ -29,9 +29,17 @@ const RECIPES: [SfxRecipe, RegExp][] = [
 ];
 
 export function chooseRecipe(subject: string): SfxRecipe {
-  const s = subject.toLowerCase();
-  for (const [r, re] of RECIPES) if (re.test(s)) return r;
-  return "impact";
+  return matchRecipe(subject) ?? "impact";
+}
+
+/** The recipe a request matches, or undefined when nothing fits (whole words only). */
+export function matchRecipe(subject: string): SfxRecipe | undefined {
+  const s = ` ${subject.toLowerCase().replace(/[^a-z0-9 ]+/g, " ")} `;
+  for (const [r, re] of RECIPES) {
+    const whole = new RegExp(`(?<![a-z])(?:${re.source})(?![a-z])`);
+    if (whole.test(s)) return r;
+  }
+  return undefined;
 }
 
 function rngFrom(seed: number): () => number {
