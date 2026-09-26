@@ -53,3 +53,14 @@ test("music genre routing picks sane BPM/key per genre", () => {
   assert.equal(orch.genre, "cinematic-orchestral");
   assert.ok(orch.instruments.some((i) => /strings/i.test(i)));
 });
+
+test("brand colours in the style (hex or words) drive the palette", () => {
+  const hex = consult({ assetKind: "logo", subject: "Sofra", style: "warm #0F766E #f59e0b" });
+  assert.deepEqual(hex.params.palette?.slice(0, 2), ["#0f766e", "#f59e0b"]);
+  const named = consult({ assetKind: "ui-mockup", subject: "fitness app", style: "navy and gold" });
+  assert.deepEqual(named.params.palette?.slice(0, 2), ["#1e3a8a", "#b8860b"]);
+  const art = consult({ assetKind: "vector-art", subject: "calm teal waves at dusk" });
+  assert.equal(art.params.palette?.[0], "#0f766e", "illustration subject colours count");
+  const logo = consult({ assetKind: "logo", subject: "Red Harbor" });
+  assert.notEqual(logo.params.palette?.[0], "#dc2626", "a logo NAME is not a colour request");
+});
